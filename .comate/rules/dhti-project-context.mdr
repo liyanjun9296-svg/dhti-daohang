@@ -11,7 +11,31 @@ alwaysApply: true
 - 项目根：`/Users/liyanjun04/Downloads/sbti_daohang/`
 - 前端：Vue 3 + Vite，开发端口 **5173**
 - 后端：Express.js，运行端口 **3001**
-- 当前项目不是 git repo
+- Git repo 已初始化（首次 commit `8ee050e`）
+
+## 设计工具（Pencil MCP）
+
+- 设计稿文件：`DHTI.pen`（项目根目录）
+- Pencil MCP server（comate 版）启动命令：
+  ```bash
+  ~/.pencil/mcp/comate/out/mcp-server-darwin-arm64 --app comate --http --http-port 3846 > /tmp/pencil-mcp.log 2>&1 &
+  ```
+- Comate MCP 配置文件：`~/Library/Application Support/Comate/User/mcp.json`
+  ```json
+  { "servers": { "pencil": { "url": "http://127.0.0.1:3846/mcp", "type": "http" } } }
+  ```
+- 三个设计帧（均为 1920×1080 基础，结果页 2200px 长页）：
+  - `bi8Au` → HomeView
+  - `ohlXN` → QuizView
+  - `bPB9W` → ResultView
+
+## 图片资源
+
+| 文件 | 路径 | 说明 |
+|------|------|------|
+| 百度地图 Logo | `frontend/public/baidu-logo.png` | 首页图标，78×78，r=19 |
+| 结果页占位图 | `frontend/public/types/placeholder.png` | 角色图加载失败时显示 |
+| 角色配图（待添加） | `frontend/public/types/{CODE}.png` | 27 种人格各一张，302×302 |
 
 ## 三层人格体系：MBTI ⊃ SBTI ⊃ DHTI
 
