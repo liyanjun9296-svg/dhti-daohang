@@ -1,0 +1,25 @@
+{
+  "scoring": {
+    "thresholds": {
+      "L": [2, 3],
+      "M": [4, 4],
+      "H": [5, 6]
+    },
+    "levelNumeric": { "L": 1, "M": 2, "H": 3 },
+    "maxDistance": 30,
+    "fallbackThreshold": 60
+  },
+  "display": {
+    "title": "导航DHTI",
+    "subtitle": "你是哪种导航人格？",
+    "funNote": "本测试仅供娱乐，不作为驾照考试、保险评定、相亲筛选或任何严肃场景的依据。",
+    "funNoteSpecial": "本测试仅供娱乐。路怒彩蛋和随缘兜底都是作者故意埋的损招，不代表对你人格的任何评判。",
+    "topN": 5
+  },
+  "rageGate": {
+    "gateQuestionId": "rage_gate_q1",
+    "gateTriggerValue": 3,
+    "confirmQuestionId": "rage_gate_q2",
+    "confirmTriggerValue": 2
+  }
+}

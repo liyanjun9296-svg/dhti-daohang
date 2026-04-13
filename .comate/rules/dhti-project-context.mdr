@@ -1,0 +1,365 @@
+---
+description: 导航DHTI项目完整上下文——人格测试系统
+alwaysApply: true
+---
+
+# 导航DHTI 项目上下文
+
+## 项目概述
+
+基于驾驶行为的趣味人格测试系统（类 MBTI），测试名称"导航DHTI"，副标题"你是哪种导航人格？"。
+- 项目根：`/Users/liyanjun04/Downloads/sbti_daohang/`
+- 前端：Vue 3 + Vite，开发端口 **5173**
+- 后端：Express.js，运行端口 **3001**
+- 当前项目不是 git repo
+
+## 三层人格体系：MBTI ⊃ SBTI ⊃ DHTI
+
+本项目处于三层人格体系的最内层：
+
+```
+MBTI（16种）→ 通用人格框架，4个二元维度，1962年
+  ↓ 框架借鉴，增加情境粒度
+SBTI（27种）→ 情境行为框架，15维，2026年4月爆火
+  ↓ 主题移植，驾驶情境专属化
+DHTI（27种）→ 本项目，驾驶行为框架，15维，NCRAS模型
+```
+
+### SBTI 简介
+
+- 全称：Silly Behavioral Type Indicator
+- 原作：B站 UP 主"蛆肉儿串儿"，开源复刻：pingfanfan/SBTI（MIT License）
+- 5 大模型（S自我/E情感/A态度/Ac行动/So社交）× 3子维度 = 15维
+- 25种标准类型 + HHHH（兜底）+ DRUNK（隐藏酒精触发）= 27种
+- 匹配算法：曼哈顿距离，最大距离30，<60%相似度触发兜底
+
+### SBTI → DHTI 维度对应
+
+| SBTI 模型 | DHTI 模型 |
+|-----------|-----------|
+| S 自我模型（自尊/清晰/价值观） | N 导航心理（路感/目标/驱动力） |
+| E 情感模型（安全感/投入/边界） | C 车内情感（焦虑/投入/独行边界） |
+| A 态度模型（世界观/规则/意义） | R 路途态度（司机观/规则/意义感） |
+| Ac 行动驱力（动机/决策/执行） | A 行动模式（冒险/决策力/执行力） |
+| So 社交模型（主动/边界/真实） | S 社交出行（拼车/车内边界/分享度） |
+
+### SBTI 25种标准类型速查
+
+| 聚类 | 类型代码（中文名） |
+|------|------------------|
+| 🔴 高功能执行群 | CTRL拿捏者 / BOSS领导者 / GOGO行人 |
+| 🟢 情感关怀群 | SEXY尤物 / LOVE-R多情者 / MUM妈妈型 / ATM-er送钱者 / THAN-K感恩者 |
+| 🟡 社交混沌群 | FAKE伪人 / OJBK无所谓 / MALO吗喽 / JOKE-R小丑 |
+| 🟣 高认知独立群 | WOC!震惊人 / THIN-K思考者 / SHIT草者 / POOR贫困者 |
+| 🔵 焦虑内耗群 | MONK僧人 / SOLO孤儿 / IMSB傻者 / OH-NO哦不人 |
+| ⚫ 低能量边缘群 | DEAD死者 / IMFW废物 / ZZZZ装死者 / FUCK草者 / Dior-s屌丝 |
+
+### DHTI ↔ SBTI ↔ MBTI 对照
+
+| DHTI | SBTI | MBTI |
+|------|------|------|
+| NAVI 路神 | CTRL 拿捏者 | INTJ 🟣紫 |
+| FAST 速度怪 | GOGO 行人 | ESTP 🟡黄 |
+| CTRL 掌盘手 | CTRL 拿捏者 | ENTJ 🟣紫 |
+| VIBE 路途冥想家 | MONK 僧人 | INFP 🟢绿 |
+| SOLO 孤独行者 | SOLO 孤儿 | ISTP 🟡黄 |
+| MOM 车内管家婆 | MUM 妈妈型 | ISFJ 🔵青 |
+| BOSS 出行CEO | BOSS 领导者 | ENTJ 🟣紫 |
+| DRIFTR 随机漂移侠 | MALO 吗喽 | ENFP 🟢绿 |
+| MONK 行者 | MONK 僧人 | ISFP 🟡黄 |
+| RADAR 路况播报员 | THAN-K 感恩者 | ENFJ 🟢绿 |
+| OG8K 随缘司机 | OJBK 无所谓 | ISFP 🟡黄 |
+| PLAN 行程规划师 | OH-NO 哦不人 | ISTJ 🔵青 |
+| GHOST 隐身出行者 | SOLO 孤儿 | INTJ 🟣紫 |
+| CHILL 慢生活选手 | ZZZZ 装死者 | ISFP 🟡黄 |
+| GPS 人形GPS | THIN-K 思考者 | ISTJ 🔵青 |
+| CHEAP 省钱达人 | POOR 贫困者 | ISTJ 🔵青 |
+| WILD 野路探索家 | FUCK 草者 | ISTP 🟡黄 |
+| RELAY 拼车组织者 | ATM-er 送钱者 | ENFJ 🟢绿 |
+| LOST 导航依赖症 | OH-NO 哦不人 | ISFJ 🔵青 |
+| FLEX 随机应变王 | FAKE 伪人 | ENTP 🟣紫 |
+| RAGE 路怒者 | FUCK 草者 | 特殊（无MBTI对应） |
+| HHHH 随缘兜底侠 | HHHH 傻乐者 | 特殊（无MBTI对应） |
+
+## 目录结构
+
+```
+sbti_daohang/
+├── backend/
+│   └── src/
+│       ├── app.js              # Express 入口；CORS 仅允许 localhost:5173；挂载 /api
+│       ├── routes/quiz.js      # API 路由实现
+│       ├── engine/scoring.js   # 评分引擎（三个核心函数）
+│       └── data/               # 数据源：questions/dimensions/types/config.json
+├── frontend/
+│   ├── vite.config.js          # 已配置 @ 别名指向 src/
+│   └── src/
+│       ├── views/              # HomeView / QuizView / ResultView（三个均已存在）
+│       ├── components/         # DimDetail / ProgressBar / QuizQuestion / RadarChart / Top5List
+│       ├── stores/quiz.js      # Pinia store id='quiz'
+│       ├── router/index.js     # Vue Router 路由配置
+│       ├── api/quiz.js         # 前端 HTTP 调用封装（含离线降级逻辑）
+│       ├── engine/scoring.js   # 与后端同步的评分引擎副本
+│       ├── assets/types/       # 【待添加】每种人格的角色配图 {code}.png
+│       └── data/               # 与后端同步的数据副本（修改需两处同步）
+└── docs/
+    ├── algorithm.md            # 算法文档（SBTI原理/MBTI-SBTI-DHTI三层体系/评分算法/类型全表）
+    └── character-prompts.md    # 27种人格 AI 生图提示词（含每种类型的MBTI/SBTI对应注释）
+```
+
+> 注意：`frontend/src/engine/scoring.js` 和 `frontend/src/data/*.json` 是后端的同步副本，修改任一处必须同步另一处。
+
+## API 契约
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/questions` | 返回 `{ questions, specialQuestions, totalMain }`；rage_gate 题随机插入第 8-12 位 |
+| POST | `/api/result` | 请求体 `{ answers: {qId: value}, isRageDriver: boolean }`；返回完整结果对象 |
+| GET | `/health` | 健康检查，返回 `{ status: 'ok' }` |
+
+### POST /api/result 返回结构（重要）
+
+```js
+{
+  primary:   { code, cn, intro, desc, tags, pattern, similarity, distance, exact },
+  secondary: { ...同上 },
+  rankings:  [ ...所有类型按相似度排序的数组 ],
+  mode:      'normal' | 'rage' | 'fallback',
+  scores:    { N1: 6, N2: 4, ... },        // 原始分
+  levels:    { N1: 'H', N2: 'M', ... },    // 等级
+  dimOrder:  ['N1', 'N2', ..., 'S3'],
+  dimDefs:   { N1: { name, shortName, levels: {L, M, H} }, ... }
+}
+```
+
+**类型信息在 `result.primary.*` 下，不在 `result.*` 顶层。**
+`ResultView.vue` 中使用 `const primary = result?.primary` 访问。
+
+## Pinia Store（`stores/quiz.js`，store id: `'quiz'`）
+
+**State**
+- `questions` — 含插入特殊题的完整题目列表
+- `answers` — `{ qId: value }` 答案映射
+- `isRageDriver` — 路怒彩蛋激活标志
+- `result` — 最终结果对象（null 表示未完成测试）
+- `loading` — 加载/提交状态
+- `rageConfirmInserted` — 追问题是否已插入（防重复）
+- `specialQuestions` / `totalMain` — 特殊题列表 / 主题目总数
+
+**Computed**：`progress` / `isCompleted` / `answeredMainCount` / `mainQuestionCount`
+
+**Actions**：`init()` / `setAnswer(qId, value, insertAfterIndex)` / `calcResult()` / `reset()`
+
+## 路由配置（`router/index.js`）
+
+| 路由名 | 路径 | 组件 |
+|--------|------|------|
+| `home` | `/` | `HomeView.vue` |
+| `quiz` | `/quiz` | `QuizView.vue` |
+| `result` | `/result` | `ResultView.vue` |
+
+`result` 路由有 `beforeEnter` 守卫：`store.result === null` 时重定向至 `{ name: 'home' }`。
+
+## 特殊业务逻辑（路怒彩蛋）
+
+触发条件来自 `config.json` 的 `rageGate` 节点：
+
+```
+rage_gate_q1 选第 3 项 (gateTriggerValue=3)
+  → 在当前题后动态插入 rage_gate_q2
+  → rageConfirmInserted = true
+
+rage_gate_q2 选第 2 项 (confirmTriggerValue=2)
+  → isRageDriver = true（正式激活路怒模式）
+
+rage_gate_q1 改选其他项
+  → 移除已插入的 rage_gate_q2
+  → rageConfirmInserted = false / isRageDriver = false
+```
+
+`isRageDriver` 最终通过 `POST /api/result` 的请求体传给后端 `determineResult()`。
+
+## 评分系统（NCRAS 模型）
+
+5 大维度，每维度 3 个子维度，共 15 个子维度：
+
+| 维度 | 名称 | 子维度 |
+|------|------|--------|
+| N | 导航心理 | N1 路感自信 / N2 目标清晰度 / N3 出行驱动力 |
+| C | 车内情感 | C1 路途焦虑感 / C2 出行投入度 / C3 独行边界感 |
+| R | 路途态度 | R1 司机世界观 / R2 规则灵活度 / R3 出行意义感 |
+| A | 行动模式 | A1 冒险导向 / A2 路线决策力 / A3 行程执行力 |
+| S | 社交出行 | S1 拼车主动性 / S2 车内边界感 / S3 路况分享度 |
+
+**评分规则**
+- 等级枚举：`L`（原始分 2-3）/ `M`（4）/ `H`（5-6），数值映射 L=1 M=2 H=3
+- 评分函数链：`calcDimensionScores → scoresToLevels → determineResult`
+- 人格类型：25 种标准类型 + 2 种特殊（路怒者 / 随缘兜底侠）= 27 种
+- `maxDistance=30`；低于 `fallbackThreshold=60%` 相似度时返回兜底类型
+
+## 响应式布局
+
+| 断点 | 宽度 | 效果 |
+|------|------|------|
+| 手机（< 768px） | max-width: 480px | 居中卡片，四周有灰色背景 |
+| 平板/PC（≥ 768px） | 100% 铺满 | 全屏背景色，无卡片边框阴影 |
+| 内容区域 | max-width: 1200px | 所有视图内容居中，适配 1080p |
+
+实现位置：`App.vue` 全局样式 + 每个 View 的 `@media (min-width: 768px)` scoped 样式。
+
+## 已知修复记录
+
+- `vite.config.js` 已添加 `@` 路径别名（`resolve.alias: { '@': src/ }`）
+- `questions.json` / `types.json` 中多处未转义双引号已修复（前后端两份均已同步）
+- `ResultView.vue` 已创建（初始缺失）
+- 结果页字段路径已修正：`result.primary.*` 而非 `result.*`
+
+## 配图规划（待实现）
+
+每种人格类型计划配一张角色插图：
+- 存放路径：`frontend/src/assets/types/{code}.png`（如 `NAVI.png`、`RAGE.png`）
+- `types.json` 中每个类型需添加 `image` 字段（值为文件名或相对路径）
+- 建议使用 AI 生图（Midjourney / DALL-E）为 27 种类型各生成一张，风格统一
+- 版权说明：不可直接使用 MBTI / SBTI 的角色插图（版权保护资产）
+- 提示词参考：`docs/character-prompts.md`（每条已标注对应MBTI/SBTI）
+
+
+## 目录结构
+
+```
+sbti_daohang/
+├── backend/
+│   └── src/
+│       ├── app.js              # Express 入口；CORS 仅允许 localhost:5173；挂载 /api
+│       ├── routes/quiz.js      # API 路由实现
+│       ├── engine/scoring.js   # 评分引擎（三个核心函数）
+│       └── data/               # 数据源：questions/dimensions/types/config.json
+├── frontend/
+│   ├── vite.config.js          # 已配置 @ 别名指向 src/
+│   └── src/
+│       ├── views/              # HomeView / QuizView / ResultView（三个均已存在）
+│       ├── components/         # DimDetail / ProgressBar / QuizQuestion / RadarChart / Top5List
+│       ├── stores/quiz.js      # Pinia store id='quiz'
+│       ├── router/index.js     # Vue Router 路由配置
+│       ├── api/quiz.js         # 前端 HTTP 调用封装（含离线降级逻辑）
+│       ├── engine/scoring.js   # 与后端同步的评分引擎副本
+│       ├── assets/types/       # 【待添加】每种人格的角色配图 {code}.png
+│       └── data/               # 与后端同步的数据副本（修改需两处同步）
+└── docs/
+    └── algorithm.md            # 算法文档（SBTI原理、MBTI对比、评分算法）
+```
+
+> 注意：`frontend/src/engine/scoring.js` 和 `frontend/src/data/*.json` 是后端的同步副本，修改任一处必须同步另一处。
+
+## API 契约
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/questions` | 返回 `{ questions, specialQuestions, totalMain }`；rage_gate 题随机插入第 8-12 位 |
+| POST | `/api/result` | 请求体 `{ answers: {qId: value}, isRageDriver: boolean }`；返回完整结果对象 |
+| GET | `/health` | 健康检查，返回 `{ status: 'ok' }` |
+
+### POST /api/result 返回结构（重要）
+
+```js
+{
+  primary:   { code, cn, intro, desc, tags, pattern, similarity, distance, exact },
+  secondary: { ...同上 },
+  rankings:  [ ...所有类型按相似度排序的数组 ],
+  mode:      'normal' | 'rage' | 'fallback',
+  scores:    { N1: 6, N2: 4, ... },        // 原始分
+  levels:    { N1: 'H', N2: 'M', ... },    // 等级
+  dimOrder:  ['N1', 'N2', ..., 'S3'],
+  dimDefs:   { N1: { name, shortName, levels: {L, M, H} }, ... }
+}
+```
+
+**类型信息在 `result.primary.*` 下，不在 `result.*` 顶层。**
+`ResultView.vue` 中使用 `const primary = result?.primary` 访问。
+
+## Pinia Store（`stores/quiz.js`，store id: `'quiz'`）
+
+**State**
+- `questions` — 含插入特殊题的完整题目列表
+- `answers` — `{ qId: value }` 答案映射
+- `isRageDriver` — 路怒彩蛋激活标志
+- `result` — 最终结果对象（null 表示未完成测试）
+- `loading` — 加载/提交状态
+- `rageConfirmInserted` — 追问题是否已插入（防重复）
+- `specialQuestions` / `totalMain` — 特殊题列表 / 主题目总数
+
+**Computed**：`progress` / `isCompleted` / `answeredMainCount` / `mainQuestionCount`
+
+**Actions**：`init()` / `setAnswer(qId, value, insertAfterIndex)` / `calcResult()` / `reset()`
+
+## 路由配置（`router/index.js`）
+
+| 路由名 | 路径 | 组件 |
+|--------|------|------|
+| `home` | `/` | `HomeView.vue` |
+| `quiz` | `/quiz` | `QuizView.vue` |
+| `result` | `/result` | `ResultView.vue` |
+
+`result` 路由有 `beforeEnter` 守卫：`store.result === null` 时重定向至 `{ name: 'home' }`。
+
+## 特殊业务逻辑（路怒彩蛋）
+
+触发条件来自 `config.json` 的 `rageGate` 节点：
+
+```
+rage_gate_q1 选第 3 项 (gateTriggerValue=3)
+  → 在当前题后动态插入 rage_gate_q2
+  → rageConfirmInserted = true
+
+rage_gate_q2 选第 2 项 (confirmTriggerValue=2)
+  → isRageDriver = true（正式激活路怒模式）
+
+rage_gate_q1 改选其他项
+  → 移除已插入的 rage_gate_q2
+  → rageConfirmInserted = false / isRageDriver = false
+```
+
+`isRageDriver` 最终通过 `POST /api/result` 的请求体传给后端 `determineResult()`。
+
+## 评分系统（NCRAS 模型）
+
+5 大维度，每维度 3 个子维度，共 15 个子维度：
+
+| 维度 | 名称 | 子维度 |
+|------|------|--------|
+| N | 导航心理 | N1 路感自信 / N2 目标清晰度 / N3 出行驱动力 |
+| C | 车内情感 | C1 路途焦虑感 / C2 出行投入度 / C3 独行边界感 |
+| R | 路途态度 | R1 司机世界观 / R2 规则灵活度 / R3 出行意义感 |
+| A | 行动模式 | A1 冒险导向 / A2 路线决策力 / A3 行程执行力 |
+| S | 社交出行 | S1 拼车主动性 / S2 车内边界感 / S3 路况分享度 |
+
+**评分规则**
+- 等级枚举：`L`（原始分 2-3）/ `M`（4）/ `H`（5-6），数值映射 L=1 M=2 H=3
+- 评分函数链：`calcDimensionScores → scoresToLevels → determineResult`
+- 人格类型：25 种标准类型 + 2 种特殊（路怒者 / 随缘兜底侠）= 27 种
+- `maxDistance=30`；低于 `fallbackThreshold=60%` 相似度时返回兜底类型
+
+## 响应式布局
+
+| 断点 | 宽度 | 效果 |
+|------|------|------|
+| 手机（< 768px） | max-width: 480px | 居中卡片，四周有灰色背景 |
+| 平板/PC（≥ 768px） | 100% 铺满 | 全屏背景色，无卡片边框阴影 |
+| 内容区域 | max-width: 1200px | 所有视图内容居中，适配 1080p |
+
+实现位置：`App.vue` 全局样式 + 每个 View 的 `@media (min-width: 768px)` scoped 样式。
+
+## 已知修复记录
+
+- `vite.config.js` 已添加 `@` 路径别名（`resolve.alias: { '@': src/ }`）
+- `questions.json` / `types.json` 中多处未转义双引号已修复（前后端两份均已同步）
+- `ResultView.vue` 已创建（初始缺失）
+- 结果页字段路径已修正：`result.primary.*` 而非 `result.*`
+
+## 配图规划（待实现）
+
+每种人格类型计划配一张角色插图：
+- 存放路径：`frontend/src/assets/types/{code}.png`（如 `NAVI.png`、`RAGE.png`）
+- `types.json` 中每个类型需添加 `image` 字段（值为文件名或相对路径）
+- 建议使用 AI 生图（Midjourney / DALL-E）为 27 种类型各生成一张，风格统一
+- 版权说明：不可直接使用 MBTI / SBTI 的角色插图（版权保护资产）
