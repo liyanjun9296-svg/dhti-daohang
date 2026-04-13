@@ -33,9 +33,9 @@ alwaysApply: true
 
 | 文件 | 路径 | 说明 |
 |------|------|------|
-| 百度地图 Logo | `frontend/public/baidu-logo.png` | 首页图标，78×78，r=19 |
-| 结果页占位图 | `frontend/public/types/placeholder.png` | 角色图加载失败时显示 |
-| 角色配图（待添加） | `frontend/public/types/{CODE}.png` | 27 种人格各一张，302×302 |
+| 百度地图 Logo | `frontend/public/baidu-logo.png` | 首页图标，120×120，r=29 |
+| 结果页占位图 | `frontend/public/types/placeholder.png` | 角色图加载失败时显示，200×200 |
+| 角色配图（待添加） | `frontend/public/types/{CODE}.png` | 27 种人格各一张，200×200 |
 
 ## 三层人格体系：MBTI ⊃ SBTI ⊃ DHTI
 
@@ -128,7 +128,9 @@ sbti_daohang/
 │       └── data/               # 与后端同步的数据副本（修改需两处同步）
 └── docs/
     ├── algorithm.md            # 算法文档（SBTI原理/MBTI-SBTI-DHTI三层体系/评分算法/类型全表）
-    └── character-prompts.md    # 27种人格 AI 生图提示词（含每种类型的MBTI/SBTI对应注释）
+    ├── character-prompts.md    # 27种人格 AI 生图提示词（含每种类型的MBTI/SBTI对应注释）
+    ├── design-spec.md          # 设计规范（颜色/布局/字体/组件/图片资源）
+    └── ios.md                  # Apple 设计风格参考文档
 ```
 
 > 注意：`frontend/src/engine/scoring.js` 和 `frontend/src/data/*.json` 是后端的同步副本，修改任一处必须同步另一处。
@@ -237,153 +239,17 @@ rage_gate_q1 改选其他项
 - `questions.json` / `types.json` 中多处未转义双引号已修复（前后端两份均已同步）
 - `ResultView.vue` 已创建（初始缺失）
 - 结果页字段路径已修正：`result.primary.*` 而非 `result.*`
+- `HomeView.vue` 重构：Logo + 标题 + 副标题归入 `title-group`（gap:36px），CTA 按钮 + 副文案归入 `cta-group`（gap:12px），移除 Badge 行
+- `HomeView.vue` 间距同步：Hero 外层 gap=66px，白色区内容 max-width:620px 居中
+- `HomeView.vue` 按钮尺寸修正：280×50px，padding: 0 48px
+- Logo 尺寸更新：78×78 r=19 → 120×120 r=29
+- Avatar 图片尺寸：302×302（溢出裁切）→ 200×200（精确填满圆形容器）
 
 ## 配图规划（待实现）
 
 每种人格类型计划配一张角色插图：
-- 存放路径：`frontend/src/assets/types/{code}.png`（如 `NAVI.png`、`RAGE.png`）
-- `types.json` 中每个类型需添加 `image` 字段（值为文件名或相对路径）
+- 存放路径：`frontend/public/types/{CODE}.png`（如 `NAVI.png`、`RAGE.png`）
+- 尺寸：200×200px
 - 建议使用 AI 生图（Midjourney / DALL-E）为 27 种类型各生成一张，风格统一
 - 版权说明：不可直接使用 MBTI / SBTI 的角色插图（版权保护资产）
 - 提示词参考：`docs/character-prompts.md`（每条已标注对应MBTI/SBTI）
-
-
-## 目录结构
-
-```
-sbti_daohang/
-├── backend/
-│   └── src/
-│       ├── app.js              # Express 入口；CORS 仅允许 localhost:5173；挂载 /api
-│       ├── routes/quiz.js      # API 路由实现
-│       ├── engine/scoring.js   # 评分引擎（三个核心函数）
-│       └── data/               # 数据源：questions/dimensions/types/config.json
-├── frontend/
-│   ├── vite.config.js          # 已配置 @ 别名指向 src/
-│   └── src/
-│       ├── views/              # HomeView / QuizView / ResultView（三个均已存在）
-│       ├── components/         # DimDetail / ProgressBar / QuizQuestion / RadarChart / Top5List
-│       ├── stores/quiz.js      # Pinia store id='quiz'
-│       ├── router/index.js     # Vue Router 路由配置
-│       ├── api/quiz.js         # 前端 HTTP 调用封装（含离线降级逻辑）
-│       ├── engine/scoring.js   # 与后端同步的评分引擎副本
-│       ├── assets/types/       # 【待添加】每种人格的角色配图 {code}.png
-│       └── data/               # 与后端同步的数据副本（修改需两处同步）
-└── docs/
-    └── algorithm.md            # 算法文档（SBTI原理、MBTI对比、评分算法）
-```
-
-> 注意：`frontend/src/engine/scoring.js` 和 `frontend/src/data/*.json` 是后端的同步副本，修改任一处必须同步另一处。
-
-## API 契约
-
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/api/questions` | 返回 `{ questions, specialQuestions, totalMain }`；rage_gate 题随机插入第 8-12 位 |
-| POST | `/api/result` | 请求体 `{ answers: {qId: value}, isRageDriver: boolean }`；返回完整结果对象 |
-| GET | `/health` | 健康检查，返回 `{ status: 'ok' }` |
-
-### POST /api/result 返回结构（重要）
-
-```js
-{
-  primary:   { code, cn, intro, desc, tags, pattern, similarity, distance, exact },
-  secondary: { ...同上 },
-  rankings:  [ ...所有类型按相似度排序的数组 ],
-  mode:      'normal' | 'rage' | 'fallback',
-  scores:    { N1: 6, N2: 4, ... },        // 原始分
-  levels:    { N1: 'H', N2: 'M', ... },    // 等级
-  dimOrder:  ['N1', 'N2', ..., 'S3'],
-  dimDefs:   { N1: { name, shortName, levels: {L, M, H} }, ... }
-}
-```
-
-**类型信息在 `result.primary.*` 下，不在 `result.*` 顶层。**
-`ResultView.vue` 中使用 `const primary = result?.primary` 访问。
-
-## Pinia Store（`stores/quiz.js`，store id: `'quiz'`）
-
-**State**
-- `questions` — 含插入特殊题的完整题目列表
-- `answers` — `{ qId: value }` 答案映射
-- `isRageDriver` — 路怒彩蛋激活标志
-- `result` — 最终结果对象（null 表示未完成测试）
-- `loading` — 加载/提交状态
-- `rageConfirmInserted` — 追问题是否已插入（防重复）
-- `specialQuestions` / `totalMain` — 特殊题列表 / 主题目总数
-
-**Computed**：`progress` / `isCompleted` / `answeredMainCount` / `mainQuestionCount`
-
-**Actions**：`init()` / `setAnswer(qId, value, insertAfterIndex)` / `calcResult()` / `reset()`
-
-## 路由配置（`router/index.js`）
-
-| 路由名 | 路径 | 组件 |
-|--------|------|------|
-| `home` | `/` | `HomeView.vue` |
-| `quiz` | `/quiz` | `QuizView.vue` |
-| `result` | `/result` | `ResultView.vue` |
-
-`result` 路由有 `beforeEnter` 守卫：`store.result === null` 时重定向至 `{ name: 'home' }`。
-
-## 特殊业务逻辑（路怒彩蛋）
-
-触发条件来自 `config.json` 的 `rageGate` 节点：
-
-```
-rage_gate_q1 选第 3 项 (gateTriggerValue=3)
-  → 在当前题后动态插入 rage_gate_q2
-  → rageConfirmInserted = true
-
-rage_gate_q2 选第 2 项 (confirmTriggerValue=2)
-  → isRageDriver = true（正式激活路怒模式）
-
-rage_gate_q1 改选其他项
-  → 移除已插入的 rage_gate_q2
-  → rageConfirmInserted = false / isRageDriver = false
-```
-
-`isRageDriver` 最终通过 `POST /api/result` 的请求体传给后端 `determineResult()`。
-
-## 评分系统（NCRAS 模型）
-
-5 大维度，每维度 3 个子维度，共 15 个子维度：
-
-| 维度 | 名称 | 子维度 |
-|------|------|--------|
-| N | 导航心理 | N1 路感自信 / N2 目标清晰度 / N3 出行驱动力 |
-| C | 车内情感 | C1 路途焦虑感 / C2 出行投入度 / C3 独行边界感 |
-| R | 路途态度 | R1 司机世界观 / R2 规则灵活度 / R3 出行意义感 |
-| A | 行动模式 | A1 冒险导向 / A2 路线决策力 / A3 行程执行力 |
-| S | 社交出行 | S1 拼车主动性 / S2 车内边界感 / S3 路况分享度 |
-
-**评分规则**
-- 等级枚举：`L`（原始分 2-3）/ `M`（4）/ `H`（5-6），数值映射 L=1 M=2 H=3
-- 评分函数链：`calcDimensionScores → scoresToLevels → determineResult`
-- 人格类型：25 种标准类型 + 2 种特殊（路怒者 / 随缘兜底侠）= 27 种
-- `maxDistance=30`；低于 `fallbackThreshold=60%` 相似度时返回兜底类型
-
-## 响应式布局
-
-| 断点 | 宽度 | 效果 |
-|------|------|------|
-| 手机（< 768px） | max-width: 480px | 居中卡片，四周有灰色背景 |
-| 平板/PC（≥ 768px） | 100% 铺满 | 全屏背景色，无卡片边框阴影 |
-| 内容区域 | max-width: 1200px | 所有视图内容居中，适配 1080p |
-
-实现位置：`App.vue` 全局样式 + 每个 View 的 `@media (min-width: 768px)` scoped 样式。
-
-## 已知修复记录
-
-- `vite.config.js` 已添加 `@` 路径别名（`resolve.alias: { '@': src/ }`）
-- `questions.json` / `types.json` 中多处未转义双引号已修复（前后端两份均已同步）
-- `ResultView.vue` 已创建（初始缺失）
-- 结果页字段路径已修正：`result.primary.*` 而非 `result.*`
-
-## 配图规划（待实现）
-
-每种人格类型计划配一张角色插图：
-- 存放路径：`frontend/src/assets/types/{code}.png`（如 `NAVI.png`、`RAGE.png`）
-- `types.json` 中每个类型需添加 `image` 字段（值为文件名或相对路径）
-- 建议使用 AI 生图（Midjourney / DALL-E）为 27 种类型各生成一张，风格统一
-- 版权说明：不可直接使用 MBTI / SBTI 的角色插图（版权保护资产）

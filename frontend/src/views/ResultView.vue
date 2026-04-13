@@ -220,8 +220,8 @@ function retake() {
 }
 
 .result__avatar-img {
-  width: 302px;
-  height: 302px;
+  width: 200px;
+  height: 200px;
   object-fit: cover;
 }
 

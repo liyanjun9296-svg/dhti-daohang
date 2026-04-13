@@ -975,6 +975,7 @@
                   "fill": "#181818ff",
                   "cornerRadius": 672,
                   "justifyContent": "center",
+                  "alignItems": "center",
                   "children": [
                     {
                       "type": "rectangle",
@@ -985,8 +986,8 @@
                         "url": "images/Image 1.png",
                         "mode": "fill"
                       },
-                      "width": 302,
-                      "height": 302
+                      "width": 200,
+                      "height": 200
                     }
                   ]
                 },

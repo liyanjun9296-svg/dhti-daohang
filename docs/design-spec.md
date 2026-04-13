@@ -35,7 +35,7 @@
 |------|----|
 | 内容最大宽度 `--max-width` | **1250px** |
 | 左右边距（1920px 下） | 335px（自动居中） |
-| Hero 内容垂直间距 | **gap: 64px** |
+| Hero 内容垂直间距 | **gap: 66px** |
 | Hero padding | **64px** 上下左右 |
 | Hero 最小高度（HomeView） | 804px |
 | 卡片圆角 `--r-md` | 12px |
@@ -86,7 +86,7 @@
 
 ### 角色图 Avatar（ResultView）
 - 容器：200×200px，`border-radius: 50%`，背景：`#181818`，`overflow: hidden`
-- 图片尺寸：302×302px，`object-fit: cover`（圆形裁切溢出）
+- 图片尺寸：200×200px，`object-fit: cover`（填满圆形容器）
 
 ### 毛玻璃顶栏
 - 背景：`rgba(0,0,0,0.72)`
@@ -99,9 +99,9 @@
 
 | 文件 | 路径 | 尺寸 | 说明 |
 |------|------|------|------|
-| 百度地图 Logo | `public/baidu-logo.png` | 78×78 | 首页图标，圆角 19px |
-| 结果页占位图 | `public/types/placeholder.png` | 302×302 | 角色图 fallback |
-| 人格角色图 | `public/types/{CODE}.png` | 302×302 | 27 种各一张（待添加） |
+| 百度地图 Logo | `public/baidu-logo.png` | 120×120 | 首页图标，圆角 29px |
+| 结果页占位图 | `public/types/placeholder.png` | 200×200 | 角色图 fallback |
+| 人格角色图 | `public/types/{CODE}.png` | 200×200 | 27 种各一张（待添加） |
 
 **角色图命名规则**：使用大写人格代码，如 `NAVI.png`、`RAGE.png`、`HHHH.png`
 
@@ -114,14 +114,12 @@
 ### HomeView（黑 + 白）
 ```
 黑色 Hero（min-height: 804px）
-  └─ HeroContent（max-width: 1250px，vertical flex，gap: 64px）
-       ├─ Badges 行（pill × 2）
-       ├─ Logo（78×78）
-       ├─ Title + Subtitle
+  └─ HeroContent（max-width: 1250px，vertical flex，gap: 66px）
+       ├─ title-group（Logo 120px + 标题 + 副标题，内部 gap: 36px）
        ├─ Stats box（380px）
-       └─ CTA 区（按钮 + 副文案）
+       └─ CTA 区（按钮 280×50px + 副文案，内部 gap: 12px）
 白色 InfoSection
-  └─ 描述文字（620px）+ 免责声明框
+  └─ 描述文字（620px 居中）+ 免责声明框
 ```
 
 ### QuizView（灰底 + 深色顶栏）

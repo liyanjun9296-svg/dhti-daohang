@@ -23,20 +23,12 @@ async function startQuiz() {
     <section class="home__hero">
       <div class="home__hero-inner">
 
-        <!-- 顶部小标签 -->
-        <div class="home__badges">
-          <span class="home__badge">娱乐实验</span>
-          <span class="home__badge">非正式心理测评</span>
-        </div>
-
-        <!-- 百度地图 Logo -->
-        <div class="home__logo-wrap" aria-hidden="true">
+        <!-- Logo + 标题组（对应 Pencil Frame3, gap=8） -->
+        <div class="home__title-group">
           <img src="/baidu-logo.png" alt="百度地图" class="home__logo" />
+          <h1 class="home__title">导航 DHTI</h1>
+          <p class="home__subtitle">你是哪种导航人格？</p>
         </div>
-
-        <!-- 主标题 -->
-        <h1 class="home__title">导航 DHTI</h1>
-        <p class="home__subtitle">你是哪种导航人格？</p>
 
         <!-- 数据摘要 -->
         <div class="home__stats">
@@ -56,11 +48,13 @@ async function startQuiz() {
           </div>
         </div>
 
-        <!-- 开始按钮 -->
-        <button class="btn btn-primary home__cta" @click="startQuiz">
-          开始测试
-        </button>
-        <p class="home__cta-sub">百度地图，为专属的你保驾护航</p>
+        <!-- CTA 组（对应 Pencil Frame2, gap=12） -->
+        <div class="home__cta-group">
+          <button class="btn btn-primary home__cta" @click="startQuiz">
+            开始测试
+          </button>
+          <p class="home__cta-sub">百度地图，为专属的你保驾护航</p>
+        </div>
 
       </div>
     </section>
@@ -68,18 +62,20 @@ async function startQuiz() {
     <!-- ── 浅灰信息区 ─────────────────────────────── -->
     <section class="home__info">
       <div class="home__info-inner">
+        <div class="home__info-content">
 
-        <p class="home__desc">
-          选最接近你直觉的就行。这是一个基于驾驶出行场景的轻量人格测验，
-          从导航心理、路途态度、行动模式等 15 个维度，
-          帮你找到最像你的那种导航人格。
-        </p>
+          <p class="home__desc">
+            选最接近你直觉的就行。这是一个基于驾驶出行场景的轻量人格测验，
+            从导航心理、路途态度、行动模式等 15 个维度，
+            帮你找到最像你的那种导航人格。
+          </p>
 
-        <!-- 免责声明 -->
-        <div class="home__disclaimer">
-          仅供娱乐，请勿用于招聘、保险、相亲或任何严肃场景。
+          <!-- 免责声明 -->
+          <div class="home__disclaimer">
+            仅供娱乐，请勿用于招聘、保险、相亲或任何严肃场景。
+          </div>
+
         </div>
-
       </div>
     </section>
 
@@ -112,41 +108,26 @@ async function startQuiz() {
   flex-direction: column;
   align-items: center;
   text-align: center;
-  gap: 64px;
+  gap: 66px;
 }
 
-/* 顶部小标签 */
-.home__badges {
+/* Logo + 标题组（Frame3 in Pencil, gap=8） */
+.home__title-group {
   display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  justify-content: center;
-  margin: 0;
-}
-
-.home__badge {
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.48);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: var(--r-pill);
-  padding: 3px 12px;
-  line-height: 1.5;
+  flex-direction: column;
+  align-items: center;
+  gap: 36px;
 }
 
 /* 百度地图 Logo */
-.home__logo-wrap {
-  display: flex;
-  justify-content: center;
-}
-
 .home__logo {
-  width: 78px;
-  height: 78px;
-  border-radius: 19px;
+  width: 120px;
+  height: 120px;
+  border-radius: 29px;
   display: block;
 }
 
-/* 标题组（title + subtitle 共用一个间距块） */
+/* 标题 */
 .home__title {
   font-family: -apple-system, 'SF Pro Display', 'PingFang SC',
     'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
@@ -155,7 +136,7 @@ async function startQuiz() {
   line-height: 1.08;
   letter-spacing: -0.5px;
   color: var(--text-white);
-  margin: 0 0 8px;
+  margin: 0;
 }
 
 /* 副标题 */
@@ -211,15 +192,22 @@ async function startQuiz() {
   flex-shrink: 0;
 }
 
+/* CTA 组（Frame2 in Pencil, gap=12） */
+.home__cta-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
 /* CTA 按钮 */
 .home__cta {
-  width: 100%;
-  max-width: 320px;
+  width: 280px;
+  height: 50px;
   font-size: 17px;
   font-weight: 400;
-  padding: 14px 24px;
+  padding: 0 48px;
   border-radius: var(--r);
-  margin-bottom: 12px;
 }
 
 .home__cta-sub {
@@ -239,6 +227,12 @@ async function startQuiz() {
   max-width: var(--max-width);
   margin: 0 auto;
   padding: 40px 24px 48px;
+}
+
+/* 白色区 620px 居中内容块（对应 Pencil InfoContent w=620） */
+.home__info-content {
+  max-width: 620px;
+  margin: 0 auto;
 }
 
 .home__desc {
@@ -277,18 +271,12 @@ async function startQuiz() {
     max-width: 380px;
   }
 
-  .home__cta {
-    max-width: 280px;
-    padding: 14px 48px;
-  }
-
   .home__info-inner {
     padding: 56px 48px 72px;
   }
 
   .home__desc {
     font-size: 19px;
-    max-width: 620px;
   }
 }
 </style>
