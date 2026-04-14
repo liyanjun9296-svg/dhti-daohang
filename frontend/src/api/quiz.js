@@ -65,41 +65,6 @@ export async function fetchQuestions() {
   }
 }
 
-/**
- * 提交答案，获取结果
- * 优先请求后端；失败时本地计算
- */
-export async function submitAnswers(answers, isRageDriver) {
-  try {
-    const res = await fetch(`${BASE_URL}/result`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ answers, isRageDriver }),
-      signal: AbortSignal.timeout(5000),
-    })
-    if (!res.ok) throw new Error('API error')
-    return await res.json()
-  } catch {
-    // 降级：本地计算
-    const scores = calcDimensionScores(answers, localQuestions.main)
-    const levels = scoresToLevels(scores, localConfig.scoring.thresholds)
-    const result = determineResult(
-      levels,
-      localDimensions.order,
-      localTypes.standard,
-      localTypes.special,
-      { isRageDriver }
-    )
-    return {
-      ...result,
-      scores,
-      levels,
-      dimOrder: localDimensions.order,
-      dimDefs: localDimensions.definitions,
-    }
-  }
-}
-
 
 /**
  * 提交答案，获取结果
