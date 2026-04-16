@@ -96,6 +96,7 @@ onBeforeUnmount(() => {
   position: relative;
   flex-shrink: 0;
   display: block;
+  margin: 0 auto;
 }
 
 .ta__img {
