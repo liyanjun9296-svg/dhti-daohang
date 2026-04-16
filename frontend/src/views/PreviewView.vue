@@ -207,12 +207,50 @@ function handleKeydown(e, file, id, field, multiline) {
 
 async function revertField(file, id, field) {
   const k = eKey(file, id, field)
-  const prev = editMeta[k]?.prevValue
-  if (prev === undefined) return
-  editDraft.value = prev
-  editingKey.value = k
-  await commitEdit(file, id, field)
-  editMeta[k].prevValue = undefined
+  if (!editMeta[k]) editMeta[k] = {}
+  editMeta[k].saving = true
+  editMeta[k].error = null
+  try {
+    // 从 git HEAD 取原始值
+    const res = await fetch('http://localhost:3001/api/dev/dhti-original')
+    if (!res.ok) throw new Error('无法读取 git HEAD')
+    const json = await res.json()
+
+    let originalValue
+    if (file === 'types') {
+      const allTypesGit = [...json.types.standard, ...json.types.special]
+      originalValue = allTypesGit.find(t => t.code === id)?.[field]
+    } else {
+      originalValue = json.questions.main.find(q => q.id === id)?.[field]
+    }
+    if (originalValue === undefined) throw new Error('字段在 git HEAD 中不存在')
+
+    // 直接 patch（不经过 editDraft）
+    const patchRes = await fetch('http://localhost:3001/api/dev/patch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ file, id, field, value: originalValue }),
+    })
+    const patchJson = await patchRes.json()
+    if (!patchRes.ok) throw new Error(patchJson.error || 'patch failed')
+
+    // 更新本地响应式状态
+    if (file === 'types') {
+      const arr = dhtiStandard.value.find(t => t.code === id) ? dhtiStandard : dhtiSpecial
+      const item = arr.value.find(t => t.code === id)
+      if (item) item[field] = originalValue
+    } else {
+      const item = dhtiQuestions.value.find(q => q.id === id)
+      if (item) item[field] = originalValue
+    }
+
+    editMeta[k].saving = false
+    editMeta[k].saved = true
+    setTimeout(() => { if (editMeta[k]) editMeta[k].saved = false }, 2000)
+  } catch (e) {
+    editMeta[k].saving = false
+    editMeta[k].error = e.message
+  }
 }
 
 // 全局还原：恢复到最后一次 git commit 的版本
@@ -461,8 +499,7 @@ const sbtiQuestionsByModel = computed(() => {
                       <span>{{ row.dhtiQs[idx].text }}</span>
                       <button class="ef-btn ef-edit" title="编辑题目"
                         @click="startEdit('questions', row.dhtiQs[idx].id, 'text', row.dhtiQs[idx].text)">✏</button>
-                      <button v-if="editMeta[eKey('questions', row.dhtiQs[idx].id, 'text')]?.prevValue !== undefined"
-                        class="ef-btn ef-revert" title="撤回上次保存"
+                      <button class="ef-btn ef-revert" title="还原至 git HEAD 版本"
                         @click="revertField('questions', row.dhtiQs[idx].id, 'text')">↩</button>
                       <span v-if="editMeta[eKey('questions', row.dhtiQs[idx].id, 'text')]?.saving" class="ef-hint">保存中…</span>
                       <span v-else-if="editMeta[eKey('questions', row.dhtiQs[idx].id, 'text')]?.saved" class="ef-ok">✓</span>
@@ -501,8 +538,7 @@ const sbtiQuestionsByModel = computed(() => {
                 <span class="pv__result-cn">{{ mockResult.primary.cn }}</span>
                 <button class="ef-btn ef-edit ef-light-btn" title="编辑中文名"
                   @click="startEdit('types', selectedCode, 'cn', mockResult.primary.cn)">✏</button>
-                <button v-if="editMeta[eKey('types', selectedCode, 'cn')]?.prevValue !== undefined"
-                  class="ef-btn ef-revert ef-light-btn" @click="revertField('types', selectedCode, 'cn')">↩</button>
+                <button class="ef-btn ef-revert ef-light-btn" title="还原至 git HEAD 版本" @click="revertField('types', selectedCode, 'cn')">↩</button>
                 <span v-if="editMeta[eKey('types', selectedCode, 'cn')]?.saved" class="ef-ok ef-light-hint">✓</span>
               </template>
             </div>
@@ -518,8 +554,7 @@ const sbtiQuestionsByModel = computed(() => {
                 <span class="pv__result-intro">{{ mockResult.primary.intro }}</span>
                 <button class="ef-btn ef-edit ef-light-btn" title="编辑介绍语"
                   @click="startEdit('types', selectedCode, 'intro', mockResult.primary.intro)">✏</button>
-                <button v-if="editMeta[eKey('types', selectedCode, 'intro')]?.prevValue !== undefined"
-                  class="ef-btn ef-revert ef-light-btn" @click="revertField('types', selectedCode, 'intro')">↩</button>
+                <button class="ef-btn ef-revert ef-light-btn" title="还原至 git HEAD 版本" @click="revertField('types', selectedCode, 'intro')">↩</button>
                 <span v-if="editMeta[eKey('types', selectedCode, 'intro')]?.saved" class="ef-ok ef-light-hint">✓</span>
               </template>
             </div>
@@ -539,8 +574,7 @@ const sbtiQuestionsByModel = computed(() => {
                 </div>
                 <button class="ef-btn ef-edit ef-light-btn" title="编辑标签"
                   @click="startEdit('types', selectedCode, 'tags', (mockResult.primary.tags || []).join(','))">✏</button>
-                <button v-if="editMeta[eKey('types', selectedCode, 'tags')]?.prevValue !== undefined"
-                  class="ef-btn ef-revert ef-light-btn" @click="revertField('types', selectedCode, 'tags')">↩</button>
+                <button class="ef-btn ef-revert ef-light-btn" title="还原至 git HEAD 版本" @click="revertField('types', selectedCode, 'tags')">↩</button>
                 <span v-if="editMeta[eKey('types', selectedCode, 'tags')]?.saved" class="ef-ok ef-light-hint">✓</span>
               </template>
             </div>
@@ -558,8 +592,7 @@ const sbtiQuestionsByModel = computed(() => {
               <template v-if="editingKey !== eKey('types', selectedCode, 'desc')">
                 <button class="ef-btn ef-edit" title="编辑描述"
                   @click="startEdit('types', selectedCode, 'desc', mockResult.primary.desc)">✏</button>
-                <button v-if="editMeta[eKey('types', selectedCode, 'desc')]?.prevValue !== undefined"
-                  class="ef-btn ef-revert" @click="revertField('types', selectedCode, 'desc')">↩</button>
+                <button class="ef-btn ef-revert" title="还原至 git HEAD 版本" @click="revertField('types', selectedCode, 'desc')">↩</button>
                 <span v-if="editMeta[eKey('types', selectedCode, 'desc')]?.saving" class="ef-hint">保存中…</span>
                 <span v-else-if="editMeta[eKey('types', selectedCode, 'desc')]?.saved" class="ef-ok">✓</span>
                 <span v-else-if="editMeta[eKey('types', selectedCode, 'desc')]?.error" class="ef-err"
