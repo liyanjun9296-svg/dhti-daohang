@@ -22,10 +22,10 @@ const routes = [
     path: '/result',
     name: 'result',
     component: () => import('@/views/ResultView.vue'),
-    // 没有结果时重定向回首页
-    beforeEnter: () => {
+    // 分享链接（?type=CODE）直接放行，没有结果且无 type 参数时重定向首页
+    beforeEnter: (to) => {
       const store = useQuizStore()
-      if (!store.result) return { name: 'home' }
+      if (!store.result && !to.query.type) return { name: 'home' }
     },
   },
 ]

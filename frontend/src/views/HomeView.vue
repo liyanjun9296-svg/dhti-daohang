@@ -3,11 +3,43 @@
  * 首页
  * 展示测试说明，点击进入答题流程
  */
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQuizStore } from '@/stores/quiz'
 
 const router = useRouter()
 const quizStore = useQuizStore()
+
+// ── 入场动画：三组错落 ────────────────────────────
+const g1 = ref(false)  // Logo + 标题 + 副标题
+const g2 = ref(false)  // 数字统计
+const g3 = ref(false)  // 按钮 + 辅助文字
+
+// ── 数字计数器 ────────────────────────────────────
+const num15 = ref(0)
+const num27 = ref(0)
+
+function countUp(setter, target, delay) {
+  setTimeout(() => {
+    const dur = 900
+    const t0 = performance.now()
+    const tick = (now) => {
+      const p = Math.min((now - t0) / dur, 1)
+      const ease = 1 - Math.pow(1 - p, 3)
+      setter(Math.round(ease * target))
+      if (p < 1) requestAnimationFrame(tick)
+    }
+    requestAnimationFrame(tick)
+  }, delay)
+}
+
+onMounted(() => {
+  setTimeout(() => { g1.value = true }, 100)
+  setTimeout(() => { g2.value = true }, 260)
+  setTimeout(() => { g3.value = true }, 440)
+  countUp(v => { num15.value = v }, 15, 260)
+  countUp(v => { num27.value = v }, 27, 380)
+})
 
 async function startQuiz() {
   quizStore.reset()
@@ -23,22 +55,22 @@ async function startQuiz() {
     <section class="home__hero">
       <div class="home__hero-inner">
 
-        <!-- Logo + 标题组（对应 Pencil Frame3, gap=8） -->
-        <div class="home__title-group">
+        <!-- Group 1: Logo + 标题 + 副标题 -->
+        <div class="home__title-group anim-g" :class="{ 'anim-in': g1 }">
           <img src="/baidu-logo.png" alt="百度地图" class="home__logo" />
           <h1 class="home__title">导航 DHTI</h1>
           <p class="home__subtitle">你是哪种导航人格？</p>
         </div>
 
-        <!-- 数据摘要 -->
-        <div class="home__stats">
+        <!-- Group 2: 数字统计（数字动态计数） -->
+        <div class="home__stats anim-g" :class="{ 'anim-in': g2 }">
           <div class="home__stat">
-            <span class="home__stat-num">15</span>
+            <span class="home__stat-num">{{ num15 }}</span>
             <span class="home__stat-label">出行维度</span>
           </div>
           <div class="home__stat-divider" aria-hidden="true"></div>
           <div class="home__stat">
-            <span class="home__stat-num">27</span>
+            <span class="home__stat-num">{{ num27 }}</span>
             <span class="home__stat-label">导航人格</span>
           </div>
           <div class="home__stat-divider" aria-hidden="true"></div>
@@ -48,8 +80,8 @@ async function startQuiz() {
           </div>
         </div>
 
-        <!-- CTA 组（对应 Pencil Frame2, gap=12） -->
-        <div class="home__cta-group">
+        <!-- Group 3: 按钮 + 辅助文字 -->
+        <div class="home__cta-group anim-g" :class="{ 'anim-in': g3 }">
           <button class="btn btn-primary home__cta" @click="startQuiz">
             开始测试
           </button>
@@ -109,6 +141,19 @@ async function startQuiz() {
   align-items: center;
   text-align: center;
   gap: 66px;
+}
+
+/* ── 入场动画基类 ── */
+.anim-g {
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity 0.65s cubic-bezier(0.22, 1, 0.36, 1),
+              transform 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform;
+}
+.anim-g.anim-in {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 /* Logo + 标题组（Frame3 in Pencil, gap=8） */
@@ -217,7 +262,7 @@ async function startQuiz() {
   margin: 0;
 }
 
-/* ── 信息区：浅灰 ── */
+/* ── 信息区：白色 ── */
 .home__info {
   background: #ffffff;
 }
