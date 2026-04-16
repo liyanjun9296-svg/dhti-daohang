@@ -9,6 +9,7 @@ import { useQuizStore } from '@/stores/quiz'
 import RadarChart from '@/components/RadarChart.vue'
 import Top5List from '@/components/Top5List.vue'
 import DimDetail from '@/components/DimDetail.vue'
+import TypeAvatar from '@/components/TypeAvatar.vue'
 
 const router = useRouter()
 const quizStore = useQuizStore()
@@ -48,12 +49,7 @@ function retake() {
 
         <!-- 角色配图 -->
         <div class="result__avatar">
-          <img
-            :src="`/types/${primary.code}.png`"
-            :alt="primary.cn"
-            class="result__avatar-img"
-            @error="e => { e.target.src = '/types/placeholder.png' }"
-          />
+          <TypeAvatar :code="primary.code" :size="200" />
         </div>
 
         <!-- 相似度 -->
@@ -210,19 +206,7 @@ function retake() {
 .result__avatar {
   width: 200px;
   height: 200px;
-  border-radius: 50%;
-  background: #181818;
   margin: 0 auto 24px;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.result__avatar-img {
-  width: 200px;
-  height: 200px;
-  object-fit: cover;
 }
 
 /* 相似度 */

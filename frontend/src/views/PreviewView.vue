@@ -15,6 +15,7 @@ import { parsePattern, matchType } from '@/engine/scoring.js'
 import RadarChart from '@/components/RadarChart.vue'
 import Top5List from '@/components/Top5List.vue'
 import DimDetail from '@/components/DimDetail.vue'
+import TypeAvatar from '@/components/TypeAvatar.vue'
 
 // ─────────────────────────────────────────────
 // DHTI 响应式数据（可编辑，写回源文件）
@@ -489,8 +490,7 @@ const sbtiQuestionsByModel = computed(() => {
           <div v-if="mockResult.mode === 'fallback'" class="pv__fallback-banner">⚠️ 兜底类型 — 相似度过低</div>
 
           <div class="pv__result-hero">
-            <img :src="`/types/${mockResult.primary.code}.png`" :alt="mockResult.primary.cn"
-              class="pv__avatar" @error="e => { e.target.src = '/types/placeholder.png' }" />
+            <TypeAvatar :code="mockResult.primary.code" :size="100" class="pv__avatar" />
             <div class="pv__result-sim">{{ mockResult.primary.similarity }}% 匹配</div>
             <div class="pv__result-code">{{ mockResult.primary.code }}</div>
 
@@ -784,7 +784,7 @@ const sbtiQuestionsByModel = computed(() => {
   background: #1c1c1e; border-radius: 12px;
   padding: 24px; text-align: center; margin-bottom: 12px;
 }
-.pv__avatar { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; background: #2c2c2e; margin-bottom: 12px; }
+.pv__avatar { margin-bottom: 12px; }
 .pv__result-sim { color: #007AFF; font-weight: 700; font-size: 14px; margin-bottom: 4px; }
 .pv__result-code { color: #fff; font-size: 36px; font-weight: 700; letter-spacing: 2px; margin-bottom: 4px; }
 .pv__result-cn { color: #fff; font-size: 18px; }
