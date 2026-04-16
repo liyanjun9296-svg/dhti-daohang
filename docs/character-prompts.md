@@ -1,12 +1,12 @@
-# 导航DHTI 27种人格角色配图提示词
+# 导航DHTI 22种人格角色配图提示词
 
 > 使用说明：将下方提示词复制到 Midjourney / DALL-E / 即梦 / 可灵等 AI 生图工具中生成。
 > 建议统一风格：扁平卡通插画，400×400px，纯色或渐变背景，无文字。
-> 文件命名与 `types.json` 中 `code` 字段一致，存放至 `frontend/src/assets/types/`。
+> 文件命名与 `types.json` 中 `code` 字段一致，存放至 `frontend/public/types/`。
 
 ---
 
-## 标准人格类型（25种）
+## 标准人格类型（20种）
 
 ### NAVI · 路神
 

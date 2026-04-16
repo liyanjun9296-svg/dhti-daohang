@@ -99,9 +99,9 @@
 
 | 文件 | 路径 | 尺寸 | 说明 |
 |------|------|------|------|
-| 百度地图 Logo | `public/baidu-logo.png` | 120×120 | 首页图标，圆角 29px |
+| 百度地图 Logo | `public/baidu-logo.png` | 78×78 | 首页图标，圆角 19px |
 | 结果页占位图 | `public/types/placeholder.png` | 200×200 | 角色图 fallback |
-| 人格角色图 | `public/types/{CODE}.png` | 200×200 | 27 种各一张（待添加） |
+| 人格角色图 | `public/types/{CODE}.png` | 200×200 | 22 种已完成 |
 
 **角色图命名规则**：使用大写人格代码，如 `NAVI.png`、`RAGE.png`、`HHHH.png`
 
@@ -115,7 +115,7 @@
 ```
 黑色 Hero（min-height: 804px）
   └─ HeroContent（max-width: 1250px，vertical flex，gap: 66px）
-       ├─ title-group（Logo 120px + 标题 + 副标题，内部 gap: 36px）
+       ├─ title-group（Logo 78px + 标题 + 副标题，内部 gap: 36px）
        ├─ Stats box（380px）
        └─ CTA 区（按钮 280×50px + 副文案，内部 gap: 12px）
 白色 InfoSection

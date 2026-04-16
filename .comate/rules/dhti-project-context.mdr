@@ -33,9 +33,9 @@ alwaysApply: true
 
 | 文件 | 路径 | 说明 |
 |------|------|------|
-| 百度地图 Logo | `frontend/public/baidu-logo.png` | 首页图标，120×120，r=29 |
+| 百度地图 Logo | `frontend/public/baidu-logo.png` | 首页图标，78×78，r=19 |
 | 结果页占位图 | `frontend/public/types/placeholder.png` | 角色图加载失败时显示，200×200 |
-| 角色配图（待添加） | `frontend/public/types/{CODE}.png` | 27 种人格各一张，200×200 |
+| 角色配图（已完成） | `frontend/public/types/{CODE}.png` | 22 种人格各一张，200×200 |
 
 ## 三层人格体系：MBTI ⊃ SBTI ⊃ DHTI
 
@@ -46,7 +46,7 @@ MBTI（16种）→ 通用人格框架，4个二元维度，1962年
   ↓ 框架借鉴，增加情境粒度
 SBTI（27种）→ 情境行为框架，15维，2026年4月爆火
   ↓ 主题移植，驾驶情境专属化
-DHTI（27种）→ 本项目，驾驶行为框架，15维，NCRAS模型
+DHTI（22种）→ 本项目，驾驶行为框架，15维，NCRAS模型
 ```
 
 ### SBTI 简介
@@ -124,11 +124,12 @@ sbti_daohang/
 │       ├── router/index.js     # Vue Router 路由配置
 │       ├── api/quiz.js         # 前端 HTTP 调用封装（含离线降级逻辑）
 │       ├── engine/scoring.js   # 与后端同步的评分引擎副本
-│       ├── assets/types/       # 【待添加】每种人格的角色配图 {code}.png
+│       ├── assets/             # 静态资源
+│       ├── public/types/       # 22张角色配图已完成（NAVI.png ~ HHHH.png）
 │       └── data/               # 与后端同步的数据副本（修改需两处同步）
 └── docs/
     ├── algorithm.md            # 算法文档（SBTI原理/MBTI-SBTI-DHTI三层体系/评分算法/类型全表）
-    ├── character-prompts.md    # 27种人格 AI 生图提示词（含每种类型的MBTI/SBTI对应注释）
+    ├── character-prompts.md    # 22种人格 AI 生图提示词（含每种类型的MBTI/SBTI对应注释）
     ├── design-spec.md          # 设计规范（颜色/布局/字体/组件/图片资源）
     └── ios.md                  # Apple 设计风格参考文档
 ```
@@ -220,7 +221,7 @@ rage_gate_q1 改选其他项
 **评分规则**
 - 等级枚举：`L`（原始分 2-3）/ `M`（4）/ `H`（5-6），数值映射 L=1 M=2 H=3
 - 评分函数链：`calcDimensionScores → scoresToLevels → determineResult`
-- 人格类型：25 种标准类型 + 2 种特殊（路怒者 / 随缘兜底侠）= 27 种
+- 人格类型：20 种标准类型 + 2 种特殊（路怒者 / 随缘兜底侠）= 22 种
 - `maxDistance=30`；低于 `fallbackThreshold=60%` 相似度时返回兜底类型
 
 ## 响应式布局
@@ -229,7 +230,7 @@ rage_gate_q1 改选其他项
 |------|------|------|
 | 手机（< 768px） | max-width: 480px | 居中卡片，四周有灰色背景 |
 | 平板/PC（≥ 768px） | 100% 铺满 | 全屏背景色，无卡片边框阴影 |
-| 内容区域 | max-width: 1200px | 所有视图内容居中，适配 1080p |
+| 内容区域 | max-width: 1250px | 所有视图内容居中，适配 1080p |
 
 实现位置：`App.vue` 全局样式 + 每个 View 的 `@media (min-width: 768px)` scoped 样式。
 
@@ -243,13 +244,42 @@ rage_gate_q1 改选其他项
 - `HomeView.vue` 间距同步：Hero 外层 gap=66px，白色区内容 max-width:620px 居中
 - `HomeView.vue` 按钮尺寸修正：280×50px，padding: 0 48px
 - Logo 尺寸更新：78×78 r=19 → 120×120 r=29
+- Logo 尺寸还原：120×120 r=29 → 78×78 r=19（同步 Pencil 设计稿，commit 0c73684）
 - Avatar 图片尺寸：302×302（溢出裁切）→ 200×200（精确填满圆形容器）
 
-## 配图规划（待实现）
+## 配图规划（已完成）
 
-每种人格类型计划配一张角色插图：
+22 种人格角色插图已生成并部署（commit `15b33f4`）：
 - 存放路径：`frontend/public/types/{CODE}.png`（如 `NAVI.png`、`RAGE.png`）
-- 尺寸：200×200px
-- 建议使用 AI 生图（Midjourney / DALL-E）为 27 种类型各生成一张，风格统一
+- 尺寸：200×200px，扁平卡通风格，纯黑背景
 - 版权说明：不可直接使用 MBTI / SBTI 的角色插图（版权保护资产）
 - 提示词参考：`docs/character-prompts.md`（每条已标注对应MBTI/SBTI）
+
+---
+
+## 文档路由表（按需读取）
+
+**只有本 rule 文件每次自动读取，其他文档按需读取和更新：**
+
+| 文档 | 负责模块 | 触发条件（涉及以下内容时才读/更新） |
+|------|---------|----------------------------------|
+| `docs/algorithm.md` | 评分引擎、NCRAS维度、三层体系 | 修改 `scoring.js` / `types.json` / `dimensions.json` / `questions.json` |
+| `docs/design-spec.md` | 颜色/尺寸/布局/组件规范 | 修改 `HomeView` / `QuizView` / `ResultView` / `App.vue` 样式 |
+| `docs/character-prompts.md` | 22种人格配图提示词 | 新增/修改人格类型、重新生成配图 |
+| `docs/ios.md` | Apple 设计原则参考 | 新增页面、重构 UI 风格 |
+
+---
+
+## 部署流程规范
+
+**本地改动必须遵循以下流程，不得直接 push：**
+
+```
+1. 完成代码改动
+2. git commit（本地留存）
+3. 告知用户：改了哪个文件、改了什么、为什么改
+4. 等用户确认（"可以" / "push" 等明确指令）
+5. git push → Vercel 自动构建上线
+```
+
+> 每次涉及相关模块的改动，同步更新对应文档（见文档路由表）。
