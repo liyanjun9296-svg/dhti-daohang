@@ -2,10 +2,13 @@
 /**
  * DHTI 三层人格对照调试页 — 仅本地开发使用，不上线
  * 路由：/preview（router.js 中用 import.meta.env.DEV 守卫）
+ *
+ * SBTI：只读参考基准
+ * DHTI：可内联编辑，改动写回 types.json + questions.json（前后端两份同步）
  */
 import { ref, computed, reactive } from 'vue'
-import typesData from '@/data/types.json'
-import questionsData from '@/data/questions.json'
+import typesDataRaw from '@/data/types.json'
+import questionsDataRaw from '@/data/questions.json'
 import dimensionsData from '@/data/dimensions.json'
 import sbtiRaw from '@/data/sbti.json'
 import { parsePattern, matchType } from '@/engine/scoring.js'
@@ -14,21 +17,31 @@ import Top5List from '@/components/Top5List.vue'
 import DimDetail from '@/components/DimDetail.vue'
 
 // ─────────────────────────────────────────────
-// SBTI 响应式数据（来自 sbti.json，可编辑）
+// DHTI 响应式数据（可编辑，写回源文件）
 // ─────────────────────────────────────────────
-const sbtiTypes = ref(JSON.parse(JSON.stringify(sbtiRaw.types)))
-const sbtiQuestions = ref(JSON.parse(JSON.stringify(sbtiRaw.questions)))
-const sbtiDimNames = sbtiRaw.dimNames
+const dhtiStandard = ref(JSON.parse(JSON.stringify(typesDataRaw.standard)))
+const dhtiSpecial  = ref(JSON.parse(JSON.stringify(typesDataRaw.special)))
+const dhtiQuestions = ref(JSON.parse(JSON.stringify(questionsDataRaw.main)))
 
-// session 快照（进入页面时保存，用于"还原全部"）
-const sessionSnapshot = JSON.parse(JSON.stringify(sbtiRaw))
+// session 快照（进入时保存，用于"还原全部"）
+const sessionSnapshot = {
+  types: JSON.parse(JSON.stringify(typesDataRaw)),
+  questions: JSON.parse(JSON.stringify(questionsDataRaw)),
+}
 
-// SBTI types → 字典
-const sbtiTypesMap = computed(() => {
+const allTypes = computed(() => [...dhtiStandard.value, ...dhtiSpecial.value])
+const dhtiTypesMap = computed(() => {
   const m = {}
-  sbtiTypes.value.forEach(t => { m[t.code] = t })
+  allTypes.value.forEach(t => { m[t.code] = t })
   return m
 })
+
+// ─────────────────────────────────────────────
+// SBTI 只读数据（来自 sbti.json）
+// ─────────────────────────────────────────────
+const sbtiTypesMap = {}
+sbtiRaw.types.forEach(t => { sbtiTypesMap[t.code] = t })
+const sbtiDimNames = sbtiRaw.dimNames
 
 // SBTI维度 → DHTI维度 映射
 const SBTI_TO_DHTI_DIM = {
@@ -39,7 +52,7 @@ const SBTI_TO_DHTI_DIM = {
   So1: 'S1', So2: 'S2', So3: 'S3',
 }
 
-// MBTI 16 种类型数据
+// MBTI 16 种类型数据（只读）
 const MBTI_TYPES = {
   'INTJ': { cn: '建筑师',   color: '#7B5EA7', group: '分析家', traits: ['战略型思维', '独立自主', '远见卓识'] },
   'ENTJ': { cn: '指挥官',   color: '#7B5EA7', group: '分析家', traits: ['天生领导力', '效率导向', '果断决策'] },
@@ -94,8 +107,10 @@ const MAPPING = {
 // 工具函数
 // ─────────────────────────────────────────────
 const LEVEL_COLOR = { H: '#34C759', M: '#FF9500', L: '#FF3B30' }
+const dimOrder = dimensionsData.order
+const dimDefs = dimensionsData.definitions
 
-function patternToLevels(pattern, dimOrder) {
+function patternToLevels(pattern) {
   if (!pattern) return {}
   const chars = parsePattern(pattern)
   const levels = {}
@@ -111,33 +126,24 @@ function formatPattern(pattern) {
 // ─────────────────────────────────────────────
 // UI 状态
 // ─────────────────────────────────────────────
-const allTypes = [...typesData.standard, ...typesData.special]
-const dimOrder = dimensionsData.order
-const dimDefs = dimensionsData.definitions
-
 const selectedCode = ref('NAVI')
 const leftTab = ref('info')
 const showDimDetail = ref(false)
 
 // ─────────────────────────────────────────────
-// 内联编辑状态
-// key 格式: "types:CTRL:cn"  /  "questions:q1:text"
+// 内联编辑状态（DHTI only）
+// key 格式: "types:NAVI:cn" / "questions:q1:text"
 // ─────────────────────────────────────────────
-// 当前正在编辑的 key
 const editingKey = ref(null)
-// 草稿值
 const editDraft = ref('')
-// 每个 key 的额外状态：{ saving, saved, error, prevValue }
-const editMeta = reactive({})
+const editMeta = reactive({})   // { [key]: { saving, saved, error, prevValue } }
 
-function editKey(section, id, field) {
-  return `${section}:${id}:${field}`
-}
+function eKey(file, id, field) { return `${file}:${id}:${field}` }
 
-function startEdit(section, id, field, currentValue) {
-  const k = editKey(section, id, field)
-  editingKey.value = k
+function startEdit(file, id, field, currentValue) {
+  editingKey.value = eKey(file, id, field)
   editDraft.value = currentValue
+  const k = editingKey.value
   if (!editMeta[k]) editMeta[k] = { saving: false, saved: false, error: null, prevValue: undefined }
 }
 
@@ -146,64 +152,70 @@ function cancelEdit() {
   editDraft.value = ''
 }
 
-async function commitEdit(section, id, field) {
-  const k = editKey(section, id, field)
+async function commitEdit(file, id, field) {
+  const k = eKey(file, id, field)
   const newVal = editDraft.value
+
   // 找原始值
   let origVal
-  if (section === 'types') {
-    origVal = sbtiTypes.value.find(t => t.code === id)?.[field]
+  if (file === 'types') {
+    origVal = dhtiTypesMap.value[id]?.[field]
   } else {
-    origVal = sbtiQuestions.value.find(q => q.id === id)?.[field]
+    origVal = dhtiQuestions.value.find(q => q.id === id)?.[field]
   }
-  if (newVal === origVal) { cancelEdit(); return }
+
+  editingKey.value = null
+  if (newVal === origVal) return
 
   if (!editMeta[k]) editMeta[k] = {}
   editMeta[k].saving = true
   editMeta[k].error = null
-  editingKey.value = null
 
   try {
     const res = await fetch('http://localhost:3001/api/dev/patch', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ section, id, field, value: newVal }),
+      body: JSON.stringify({ file, id, field, value: newVal }),
     })
     const json = await res.json()
     if (!res.ok) throw new Error(json.error || 'patch failed')
-    // 记录 prevValue（可撤回）
+
+    // 记录 prevValue（用于 ↩ 撤回）
     editMeta[k].prevValue = origVal
-    // 更新本地数据
-    if (section === 'types') {
-      const t = sbtiTypes.value.find(t => t.code === id)
-      if (t) t[field] = newVal
+
+    // 更新本地响应式数据
+    if (file === 'types') {
+      const arrKey = dhtiStandard.value.find(t => t.code === id) ? 'dhtiStandard' : 'dhtiSpecial'
+      const arr = arrKey === 'dhtiStandard' ? dhtiStandard : dhtiSpecial
+      const item = arr.value.find(t => t.code === id)
+      if (item) item[field] = newVal
     } else {
-      const q = sbtiQuestions.value.find(q => q.id === id)
-      if (q) q[field] = newVal
+      const item = dhtiQuestions.value.find(q => q.id === id)
+      if (item) item[field] = newVal
     }
+
     editMeta[k].saving = false
     editMeta[k].saved = true
     setTimeout(() => { if (editMeta[k]) editMeta[k].saved = false }, 2000)
   } catch (e) {
     editMeta[k].saving = false
     editMeta[k].error = e.message
-    // 编辑失败：不修改本地数据
   }
 }
 
-function handleKeydown(e, section, id, field) {
-  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); commitEdit(section, id, field) }
+function handleKeydown(e, file, id, field, multiline) {
+  if (e.key === 'Enter' && !multiline) { e.preventDefault(); commitEdit(file, id, field) }
+  if (e.key === 'Enter' && multiline && e.metaKey) { commitEdit(file, id, field) }
   if (e.key === 'Escape') cancelEdit()
 }
 
-async function revertField(section, id, field) {
-  const k = editKey(section, id, field)
+async function revertField(file, id, field) {
+  const k = eKey(file, id, field)
   const prev = editMeta[k]?.prevValue
   if (prev === undefined) return
-  // 直接用 prev 值 patch
   editDraft.value = prev
-  await commitEdit(section, id, field)
-  // 清除 prevValue（只能 revert 一次）
+  editingKey.value = k
+  await commitEdit(file, id, field)
   editMeta[k].prevValue = undefined
 }
 
@@ -221,8 +233,9 @@ async function restoreAll() {
     })
     const json = await res.json()
     if (!res.ok) throw new Error(json.error)
-    sbtiTypes.value = JSON.parse(JSON.stringify(sessionSnapshot.types))
-    sbtiQuestions.value = JSON.parse(JSON.stringify(sessionSnapshot.questions))
+    dhtiStandard.value = JSON.parse(JSON.stringify(sessionSnapshot.types.standard))
+    dhtiSpecial.value = JSON.parse(JSON.stringify(sessionSnapshot.types.special))
+    dhtiQuestions.value = JSON.parse(JSON.stringify(sessionSnapshot.questions.main))
     Object.keys(editMeta).forEach(k => delete editMeta[k])
     editingKey.value = null
     restoreMsg.value = '✓ 已还原至初始状态'
@@ -237,33 +250,21 @@ async function restoreAll() {
 // ─────────────────────────────────────────────
 // 结果计算
 // ─────────────────────────────────────────────
-const selectedType = computed(() => allTypes.find(t => t.code === selectedCode.value))
+const selectedType = computed(() => dhtiTypesMap.value[selectedCode.value])
 const mapping = computed(() => MAPPING[selectedCode.value] || {})
-const sbtiType = computed(() => {
-  const code = mapping.value.sbti
-  return code ? sbtiTypesMap.value[code] : null
-})
+const sbtiType = computed(() => sbtiTypesMap[mapping.value.sbti] || null)
 const mbtiType = computed(() => {
   const code = mapping.value.mbti
   return code ? { code, ...MBTI_TYPES[code] } : null
 })
 
-const mockLevels = computed(() => {
-  const t = selectedType.value
-  if (!t?.pattern) return {}
-  return patternToLevels(t.pattern, dimOrder)
-})
-
-const sbtiMockLevels = computed(() => {
-  const s = sbtiType.value
-  if (!s?.pattern) return {}
-  return patternToLevels(s.pattern, dimOrder)
-})
+const mockLevels = computed(() => patternToLevels(selectedType.value?.pattern))
+const sbtiMockLevels = computed(() => patternToLevels(sbtiType.value?.pattern))
 
 const mockRankings = computed(() => {
   const levels = mockLevels.value
   if (!Object.keys(levels).length) return []
-  return [...typesData.standard]
+  return [...dhtiStandard.value]
     .map(type => ({ ...type, ...matchType(levels, dimOrder, type.pattern) }))
     .sort((a, b) => a.distance - b.distance || b.exact - a.exact || b.similarity - a.similarity)
 })
@@ -290,6 +291,20 @@ const mockResult = computed(() => {
   return { primary, secondary, rankings, levels: mockLevels.value, dimOrder, dimDefs, mode }
 })
 
+const patternComparison = computed(() => {
+  const dhtiT = selectedType.value
+  if (!dhtiT?.pattern) return []
+  const dhtiChars = parsePattern(dhtiT.pattern)
+  const sbtiChars = sbtiType.value?.pattern ? parsePattern(sbtiType.value.pattern) : []
+  return dimOrder.map((dim, i) => ({
+    dim,
+    shortName: dimDefs[dim]?.shortName || dim,
+    dhti: dhtiChars[i] || '?',
+    sbti: sbtiChars[i] || '?',
+    match: sbtiChars[i] ? dhtiChars[i] === sbtiChars[i] : null,
+  }))
+})
+
 const sbtiQuestionsByModel = computed(() => {
   const groups = [
     { sbtiModel: 'S 自我模型', dhtiModel: 'N 导航心理', dims: ['S1', 'S2', 'S3'] },
@@ -306,25 +321,10 @@ const sbtiQuestionsByModel = computed(() => {
         sbtiDim, dhtiDim,
         sbtiName: sbtiDimNames[sbtiDim],
         dhtiName: dimDefs[dhtiDim]?.shortName,
-        sbtiQs: sbtiQuestions.value.filter(q => q.dim === sbtiDim),
-        dhtiQs: questionsData.main.filter(q => q.dim === dhtiDim),
+        sbtiQs: sbtiRaw.questions.filter(q => q.dim === sbtiDim),
+        dhtiQs: dhtiQuestions.value.filter(q => q.dim === dhtiDim),
       }
     })
-  }))
-})
-
-const patternComparison = computed(() => {
-  const dhtiT = selectedType.value
-  const sbtiT = sbtiType.value
-  if (!dhtiT?.pattern) return []
-  const dhtiChars = parsePattern(dhtiT.pattern)
-  const sbtiChars = sbtiT?.pattern ? parsePattern(sbtiT.pattern) : []
-  return dimOrder.map((dim, i) => ({
-    dim,
-    shortName: dimDefs[dim]?.shortName || dim,
-    dhti: dhtiChars[i] || '?',
-    sbti: sbtiChars[i] || '?',
-    match: sbtiChars[i] ? dhtiChars[i] === sbtiChars[i] : null,
   }))
 })
 </script>
@@ -333,11 +333,11 @@ const patternComparison = computed(() => {
   <div class="pv">
     <!-- ── 顶部标题栏 ── -->
     <div class="pv__header">
-      <span class="pv__title">🛠 DHTI 三层对照调试页 · 仅本地</span>
+      <span class="pv__title">🛠 DHTI 三层对照调试页 · 仅本地 · ✏ 可编辑字段自动同步源码</span>
       <div class="pv__header-actions">
         <span v-if="restoreMsg" class="pv__restore-msg" :class="{ 'is-error': restoreMsg.startsWith('✗') }">{{ restoreMsg }}</span>
         <button class="pv__restore-btn" :disabled="restoring" @click="restoreAll">
-          {{ restoring ? '还原中…' : '↺ 还原全部' }}
+          {{ restoring ? '还原中…' : '↺ 还原全部 DHTI' }}
         </button>
       </div>
     </div>
@@ -345,25 +345,21 @@ const patternComparison = computed(() => {
     <!-- ── Chip 选择栏 ── -->
     <div class="pv__chips">
       <span class="pv__chips-label">标准</span>
-      <button
-        v-for="t in typesData.standard" :key="t.code"
+      <button v-for="t in dhtiStandard" :key="t.code"
         class="pv__chip" :class="{ 'is-active': selectedCode === t.code }"
-        @click="selectedCode = t.code; showDimDetail = false"
-      >{{ t.code }}</button>
+        @click="selectedCode = t.code; showDimDetail = false">{{ t.code }}</button>
       <span class="pv__chips-sep">|</span>
       <span class="pv__chips-label">特殊</span>
-      <button
-        v-for="t in typesData.special" :key="t.code"
+      <button v-for="t in dhtiSpecial" :key="t.code"
         class="pv__chip pv__chip--special"
         :class="{ 'is-active': selectedCode === t.code, 'is-rage': t.code === 'RAGE', 'is-fallback': t.code === 'HHHH' }"
-        @click="selectedCode = t.code; showDimDetail = false"
-      >{{ t.code }}</button>
+        @click="selectedCode = t.code; showDimDetail = false">{{ t.code }}</button>
     </div>
 
     <!-- ── 三列主体 ── -->
     <div class="pv__body">
 
-      <!-- ── 左列 ── -->
+      <!-- ── 左列：MBTI + SBTI（只读）+ 题目对比 ── -->
       <div class="pv__col pv__col--left">
         <div class="pv__col-tabs">
           <button :class="['pv__col-tab', { 'is-active': leftTab === 'info' }]" @click="leftTab = 'info'">对照信息</button>
@@ -373,7 +369,7 @@ const patternComparison = computed(() => {
         <!-- 对照信息 Tab -->
         <div v-if="leftTab === 'info'" class="pv__info">
 
-          <!-- MBTI 卡片 -->
+          <!-- MBTI 卡片（只读） -->
           <div class="pv__card">
             <div class="pv__card-title">MBTI 底层</div>
             <template v-if="mbtiType">
@@ -384,46 +380,26 @@ const patternComparison = computed(() => {
             <div v-else class="pv__no-data">无 MBTI 对应（特殊类型）</div>
           </div>
 
-          <!-- SBTI 卡片 -->
+          <!-- SBTI 卡片（只读） -->
           <div class="pv__card">
-            <div class="pv__card-title">SBTI 原版对照</div>
+            <div class="pv__card-title">SBTI 原版 <span class="pv__readonly-tag">只读</span></div>
             <template v-if="sbtiType">
-              <div class="pv__editable-row">
-                <span class="pv__sbti-code">{{ sbtiType.code }} ·&nbsp;</span>
-                <!-- 可编辑：SBTI 类型中文名 -->
-                <template v-if="editingKey === editKey('types', sbtiType.code, 'cn')">
-                  <input
-                    v-model="editDraft" class="ef-input" autofocus
-                    @keydown="e => handleKeydown(e, 'types', sbtiType.code, 'cn')"
-                    @blur="commitEdit('types', sbtiType.code, 'cn')"
-                  />
-                </template>
-                <template v-else>
-                  <span class="pv__sbti-cn">{{ sbtiType.cn }}</span>
-                  <button class="ef-btn ef-edit" title="编辑名称" @click="startEdit('types', sbtiType.code, 'cn', sbtiType.cn)">✏</button>
-                  <button v-if="editMeta[editKey('types', sbtiType.code, 'cn')]?.prevValue !== undefined"
-                    class="ef-btn ef-revert" title="撤回上次保存"
-                    @click="revertField('types', sbtiType.code, 'cn')">↩</button>
-                  <span v-if="editMeta[editKey('types', sbtiType.code, 'cn')]?.saving" class="ef-hint">保存中…</span>
-                  <span v-else-if="editMeta[editKey('types', sbtiType.code, 'cn')]?.saved" class="ef-ok">✓</span>
-                  <span v-else-if="editMeta[editKey('types', sbtiType.code, 'cn')]?.error" class="ef-err" :title="editMeta[editKey('types', sbtiType.code, 'cn')].error">✗</span>
-                </template>
-              </div>
-              <div class="pv__pattern-label">SBTI Pattern（S/E/A/Ac/So）：</div>
+              <div class="pv__sbti-code">{{ sbtiType.code }} · {{ sbtiType.cn }}</div>
+              <div class="pv__pattern-label">Pattern（S/E/A/Ac/So）：</div>
               <div class="pv__pattern-str">{{ formatPattern(sbtiType.pattern) }}</div>
             </template>
-            <div v-else class="pv__no-data">无 SBTI pattern</div>
+            <div v-else class="pv__no-data">无 SBTI 对应</div>
           </div>
 
-          <!-- DHTI 卡片 -->
+          <!-- DHTI 卡片（只读，完整字段展示） -->
           <div class="pv__card">
-            <div class="pv__card-title">DHTI 本项目</div>
+            <div class="pv__card-title">DHTI 本项目 <span class="pv__readonly-tag">右列可编辑</span></div>
             <div class="pv__sbti-code">{{ selectedType?.code }} · {{ selectedType?.cn }}</div>
-            <div class="pv__pattern-label">DHTI Pattern（N/C/R/A/S）：</div>
+            <div class="pv__pattern-label">Pattern（N/C/R/A/S）：</div>
             <div class="pv__pattern-str">{{ formatPattern(selectedType?.pattern) }}</div>
           </div>
 
-          <!-- Pattern 逐位对比 -->
+          <!-- Pattern 逐维对比 -->
           <div class="pv__card">
             <div class="pv__card-title">Pattern 逐维对比</div>
             <div class="pv__pattern-grid">
@@ -440,15 +416,17 @@ const patternComparison = computed(() => {
             </div>
           </div>
 
-          <!-- SBTI 等级分布 -->
-          <div v-if="sbtiType?.pattern" class="pv__card">
-            <div class="pv__card-title">SBTI 等级分布</div>
+          <!-- 等级分布对比 -->
+          <div class="pv__card">
+            <div class="pv__card-title">SBTI vs DHTI 等级分布</div>
             <div class="pv__level-grid">
               <div v-for="dim in dimOrder" :key="dim" class="pv__lg-item">
                 <span class="pv__lg-dim">{{ dim }}</span>
-                <span class="pv__lg-badge" :style="{ background: LEVEL_COLOR[sbtiMockLevels[dim]] }">{{ sbtiMockLevels[dim] }}</span>
+                <span class="pv__lg-badge pv__lg-sbti" :style="{ background: LEVEL_COLOR[sbtiMockLevels[dim]] || '#c7c7cc' }">{{ sbtiMockLevels[dim] || '?' }}</span>
+                <span class="pv__lg-badge pv__lg-dhti" :style="{ background: LEVEL_COLOR[mockLevels[dim]] || '#c7c7cc' }">{{ mockLevels[dim] || '?' }}</span>
               </div>
             </div>
+            <div class="pv__lg-legend"><span class="pv__lg-dot" style="background:#007AFF"></span>上SBTI 下DHTI</div>
           </div>
         </div>
 
@@ -467,33 +445,34 @@ const patternComparison = computed(() => {
                 <span>{{ row.dhtiDim }} {{ row.dhtiName }}</span>
               </div>
               <div v-for="(sq, idx) in row.sbtiQs" :key="sq.id" class="pv__qpair">
-                <!-- SBTI 题目（可编辑） -->
+                <!-- SBTI 题目：只读 -->
                 <div class="pv__q pv__q--sbti">
                   <span class="pv__q-tag">SBTI</span>
-                  <span class="pv__q-body">
-                    <template v-if="editingKey === editKey('questions', sq.id, 'text')">
-                      <textarea
-                        v-model="editDraft" class="ef-input ef-textarea" rows="2" autofocus
-                        @keydown="e => handleKeydown(e, 'questions', sq.id, 'text')"
-                        @blur="commitEdit('questions', sq.id, 'text')"
-                      />
-                    </template>
-                    <template v-else>
-                      <span>{{ sq.text }}</span>
-                      <button class="ef-btn ef-edit" title="编辑题目" @click="startEdit('questions', sq.id, 'text', sq.text)">✏</button>
-                      <button v-if="editMeta[editKey('questions', sq.id, 'text')]?.prevValue !== undefined"
-                        class="ef-btn ef-revert" title="撤回上次保存"
-                        @click="revertField('questions', sq.id, 'text')">↩</button>
-                      <span v-if="editMeta[editKey('questions', sq.id, 'text')]?.saving" class="ef-hint">保存中…</span>
-                      <span v-else-if="editMeta[editKey('questions', sq.id, 'text')]?.saved" class="ef-ok">✓</span>
-                      <span v-else-if="editMeta[editKey('questions', sq.id, 'text')]?.error" class="ef-err" :title="editMeta[editKey('questions', sq.id, 'text')].error">✗</span>
-                    </template>
-                  </span>
+                  <span>{{ sq.text }}</span>
                 </div>
-                <!-- DHTI 题目（只读） -->
+                <!-- DHTI 题目：可编辑 -->
                 <div v-if="row.dhtiQs[idx]" class="pv__q pv__q--dhti">
                   <span class="pv__q-tag">DHTI</span>
-                  <span>{{ row.dhtiQs[idx].text }}</span>
+                  <span class="pv__q-body">
+                    <template v-if="editingKey === eKey('questions', row.dhtiQs[idx].id, 'text')">
+                      <textarea v-model="editDraft" class="ef-input ef-textarea" rows="2" autofocus
+                        @keydown="e => handleKeydown(e, 'questions', row.dhtiQs[idx].id, 'text', true)"
+                        @blur="commitEdit('questions', row.dhtiQs[idx].id, 'text')" />
+                      <span class="ef-hint">⌘↵ 保存 / Esc 取消</span>
+                    </template>
+                    <template v-else>
+                      <span>{{ row.dhtiQs[idx].text }}</span>
+                      <button class="ef-btn ef-edit" title="编辑题目"
+                        @click="startEdit('questions', row.dhtiQs[idx].id, 'text', row.dhtiQs[idx].text)">✏</button>
+                      <button v-if="editMeta[eKey('questions', row.dhtiQs[idx].id, 'text')]?.prevValue !== undefined"
+                        class="ef-btn ef-revert" title="撤回上次保存"
+                        @click="revertField('questions', row.dhtiQs[idx].id, 'text')">↩</button>
+                      <span v-if="editMeta[eKey('questions', row.dhtiQs[idx].id, 'text')]?.saving" class="ef-hint">保存中…</span>
+                      <span v-else-if="editMeta[eKey('questions', row.dhtiQs[idx].id, 'text')]?.saved" class="ef-ok">✓</span>
+                      <span v-else-if="editMeta[eKey('questions', row.dhtiQs[idx].id, 'text')]?.error" class="ef-err"
+                        :title="editMeta[eKey('questions', row.dhtiQs[idx].id, 'text')].error">✗</span>
+                    </template>
+                  </span>
                 </div>
               </div>
             </div>
@@ -501,39 +480,115 @@ const patternComparison = computed(() => {
         </div>
       </div>
 
-      <!-- ── 右列：DHTI 结果预览 ── -->
+      <!-- ── 右列：DHTI 结果（可编辑） ── -->
       <div class="pv__col pv__col--right">
-        <div class="pv__col-title">DHTI 结果预览</div>
+        <div class="pv__col-title">DHTI 结果预览 <span class="pv__edit-hint">· ✏ 点击铅笔编辑字段</span></div>
+
         <template v-if="mockResult">
           <div v-if="mockResult.mode === 'rage'" class="pv__rage-banner">🚨 隐藏人格已激活 — RAGE 路怒者</div>
           <div v-if="mockResult.mode === 'fallback'" class="pv__fallback-banner">⚠️ 兜底类型 — 相似度过低</div>
+
           <div class="pv__result-hero">
             <img :src="`/types/${mockResult.primary.code}.png`" :alt="mockResult.primary.cn"
               class="pv__avatar" @error="e => { e.target.src = '/types/placeholder.png' }" />
             <div class="pv__result-sim">{{ mockResult.primary.similarity }}% 匹配</div>
             <div class="pv__result-code">{{ mockResult.primary.code }}</div>
-            <div class="pv__result-cn">{{ mockResult.primary.cn }}</div>
-            <div class="pv__result-intro">{{ mockResult.primary.intro }}</div>
-            <div class="pv__tags">
-              <span v-for="tag in mockResult.primary.tags" :key="tag" class="pv__tag">{{ tag }}</span>
+
+            <!-- 可编辑：中文名 -->
+            <div class="pv__ef-row pv__ef-center">
+              <template v-if="editingKey === eKey('types', selectedCode, 'cn')">
+                <input v-model="editDraft" class="ef-input ef-light" autofocus
+                  @keydown="e => handleKeydown(e, 'types', selectedCode, 'cn', false)"
+                  @blur="commitEdit('types', selectedCode, 'cn')" />
+              </template>
+              <template v-else>
+                <span class="pv__result-cn">{{ mockResult.primary.cn }}</span>
+                <button class="ef-btn ef-edit ef-light-btn" title="编辑中文名"
+                  @click="startEdit('types', selectedCode, 'cn', mockResult.primary.cn)">✏</button>
+                <button v-if="editMeta[eKey('types', selectedCode, 'cn')]?.prevValue !== undefined"
+                  class="ef-btn ef-revert ef-light-btn" @click="revertField('types', selectedCode, 'cn')">↩</button>
+                <span v-if="editMeta[eKey('types', selectedCode, 'cn')]?.saved" class="ef-ok ef-light-hint">✓</span>
+              </template>
+            </div>
+
+            <!-- 可编辑：intro -->
+            <div class="pv__ef-row pv__ef-center">
+              <template v-if="editingKey === eKey('types', selectedCode, 'intro')">
+                <input v-model="editDraft" class="ef-input ef-light ef-wide" autofocus
+                  @keydown="e => handleKeydown(e, 'types', selectedCode, 'intro', false)"
+                  @blur="commitEdit('types', selectedCode, 'intro')" />
+              </template>
+              <template v-else>
+                <span class="pv__result-intro">{{ mockResult.primary.intro }}</span>
+                <button class="ef-btn ef-edit ef-light-btn" title="编辑介绍语"
+                  @click="startEdit('types', selectedCode, 'intro', mockResult.primary.intro)">✏</button>
+                <button v-if="editMeta[eKey('types', selectedCode, 'intro')]?.prevValue !== undefined"
+                  class="ef-btn ef-revert ef-light-btn" @click="revertField('types', selectedCode, 'intro')">↩</button>
+                <span v-if="editMeta[eKey('types', selectedCode, 'intro')]?.saved" class="ef-ok ef-light-hint">✓</span>
+              </template>
+            </div>
+
+            <!-- 可编辑：tags（逗号分隔编辑） -->
+            <div class="pv__ef-row pv__ef-center">
+              <template v-if="editingKey === eKey('types', selectedCode, 'tags')">
+                <input v-model="editDraft" class="ef-input ef-light ef-wide" autofocus
+                  placeholder="用逗号分隔多个标签"
+                  @keydown="e => handleKeydown(e, 'types', selectedCode, 'tags', false)"
+                  @blur="commitEdit('types', selectedCode, 'tags')" />
+                <span class="ef-hint ef-light-hint">逗号分隔</span>
+              </template>
+              <template v-else>
+                <div class="pv__tags">
+                  <span v-for="tag in mockResult.primary.tags" :key="tag" class="pv__tag">{{ tag }}</span>
+                </div>
+                <button class="ef-btn ef-edit ef-light-btn" title="编辑标签"
+                  @click="startEdit('types', selectedCode, 'tags', (mockResult.primary.tags || []).join(','))">✏</button>
+                <button v-if="editMeta[eKey('types', selectedCode, 'tags')]?.prevValue !== undefined"
+                  class="ef-btn ef-revert ef-light-btn" @click="revertField('types', selectedCode, 'tags')">↩</button>
+                <span v-if="editMeta[eKey('types', selectedCode, 'tags')]?.saved" class="ef-ok ef-light-hint">✓</span>
+              </template>
             </div>
           </div>
+
           <div v-if="mockResult.secondary" class="pv__secondary">
             你也有 <strong>{{ mockResult.secondary.similarity }}%</strong> 的
             <strong>{{ mockResult.secondary.code }} · {{ mockResult.secondary.cn }}</strong> 特质
           </div>
+
+          <!-- 可编辑：desc -->
           <div class="pv__section">
-            <div class="pv__section-label">人格描述</div>
-            <p class="pv__desc">{{ mockResult.primary.desc }}</p>
+            <div class="pv__section-label-row">
+              <span class="pv__section-label">人格描述</span>
+              <template v-if="editingKey !== eKey('types', selectedCode, 'desc')">
+                <button class="ef-btn ef-edit" title="编辑描述"
+                  @click="startEdit('types', selectedCode, 'desc', mockResult.primary.desc)">✏</button>
+                <button v-if="editMeta[eKey('types', selectedCode, 'desc')]?.prevValue !== undefined"
+                  class="ef-btn ef-revert" @click="revertField('types', selectedCode, 'desc')">↩</button>
+                <span v-if="editMeta[eKey('types', selectedCode, 'desc')]?.saving" class="ef-hint">保存中…</span>
+                <span v-else-if="editMeta[eKey('types', selectedCode, 'desc')]?.saved" class="ef-ok">✓</span>
+                <span v-else-if="editMeta[eKey('types', selectedCode, 'desc')]?.error" class="ef-err"
+                  :title="editMeta[eKey('types', selectedCode, 'desc')].error">✗</span>
+              </template>
+            </div>
+            <template v-if="editingKey === eKey('types', selectedCode, 'desc')">
+              <textarea v-model="editDraft" class="ef-input ef-textarea ef-desc" rows="6" autofocus
+                @keydown="e => handleKeydown(e, 'types', selectedCode, 'desc', true)"
+                @blur="commitEdit('types', selectedCode, 'desc')" />
+              <span class="ef-hint">⌘↵ 保存 / Esc 取消</span>
+            </template>
+            <p v-else class="pv__desc">{{ mockResult.primary.desc }}</p>
           </div>
+
           <div class="pv__section">
             <div class="pv__section-label">出行人格维度</div>
             <RadarChart :levels="mockResult.levels" :dim-order="mockResult.dimOrder" :dim-defs="mockResult.dimDefs" />
           </div>
+
           <div class="pv__section">
             <div class="pv__section-label">最接近的人格</div>
             <Top5List :rankings="mockResult.rankings" :top-n="5" />
           </div>
+
           <div class="pv__section">
             <button class="pv__toggle" @click="showDimDetail = !showDimDetail">
               <span class="pv__section-label" style="margin-bottom:0">15 维度详情</span>
@@ -543,6 +598,7 @@ const patternComparison = computed(() => {
               <DimDetail :levels="mockResult.levels" :dim-order="mockResult.dimOrder" :dim-defs="mockResult.dimDefs" />
             </div>
           </div>
+
           <p class="pv__footnote">仅供娱乐，请勿用于严肃场景</p>
         </template>
       </div>
@@ -565,21 +621,15 @@ const patternComparison = computed(() => {
   background: #1c1c1e;
   color: #ffe066;
   padding: 8px 16px;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  font-size: 12px; font-weight: 600; letter-spacing: 0.05em;
+  display: flex; align-items: center; justify-content: space-between;
 }
 .pv__header-actions { display: flex; align-items: center; gap: 10px; }
 .pv__restore-btn {
   background: rgba(255,255,255,0.15);
   border: 1px solid rgba(255,224,102,0.4);
-  color: #ffe066;
-  padding: 3px 10px; border-radius: 6px;
-  font-size: 11px; font-weight: 600;
-  cursor: pointer; transition: background 0.15s;
+  color: #ffe066; padding: 3px 10px; border-radius: 6px;
+  font-size: 11px; font-weight: 600; cursor: pointer;
 }
 .pv__restore-btn:hover { background: rgba(255,255,255,0.25); }
 .pv__restore-btn:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -588,10 +638,8 @@ const patternComparison = computed(() => {
 
 /* ── Chip 栏 ── */
 .pv__chips {
-  background: #fff;
-  border-bottom: 1px solid #e5e5ea;
-  padding: 10px 16px;
-  display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+  background: #fff; border-bottom: 1px solid #e5e5ea;
+  padding: 10px 16px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
   position: sticky; top: 0; z-index: 10;
 }
 .pv__chips-label { font-size: 11px; color: #8e8e93; font-weight: 600; }
@@ -599,8 +647,7 @@ const patternComparison = computed(() => {
 .pv__chip {
   padding: 3px 10px; border-radius: 12px;
   border: 1px solid #d1d1d6; background: #fff;
-  font-size: 12px; font-weight: 600;
-  cursor: pointer; transition: all 0.15s; color: #1c1c1e;
+  font-size: 12px; font-weight: 600; cursor: pointer; color: #1c1c1e;
 }
 .pv__chip:hover { background: #f2f2f7; }
 .pv__chip.is-active { background: #1c1c1e; color: #fff; border-color: #1c1c1e; }
@@ -611,8 +658,7 @@ const patternComparison = computed(() => {
 
 /* ── 三列主体 ── */
 .pv__body {
-  display: grid;
-  grid-template-columns: 500px 1fr;
+  display: grid; grid-template-columns: 500px 1fr;
   height: calc(100vh - 80px);
 }
 .pv__col { overflow-y: auto; border-right: 1px solid #e5e5ea; }
@@ -640,6 +686,12 @@ const patternComparison = computed(() => {
   font-size: 10px; font-weight: 700;
   text-transform: uppercase; letter-spacing: 0.08em;
   color: #8e8e93; margin-bottom: 8px;
+  display: flex; align-items: center; gap: 6px;
+}
+.pv__readonly-tag {
+  font-size: 9px; padding: 1px 5px; border-radius: 4px;
+  background: #f2f2f7; color: #8e8e93;
+  text-transform: none; letter-spacing: 0;
 }
 .pv__mbti-badge {
   display: inline-block; padding: 3px 10px; border-radius: 12px;
@@ -649,10 +701,7 @@ const patternComparison = computed(() => {
 .pv__traits { margin: 0; padding-left: 16px; }
 .pv__traits li { font-size: 12px; line-height: 1.8; color: #3c3c43; }
 .pv__no-data { font-size: 12px; color: #8e8e93; font-style: italic; }
-
-.pv__editable-row { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
-.pv__sbti-code { font-size: 14px; font-weight: 700; }
-.pv__sbti-cn { font-size: 14px; font-weight: 700; }
+.pv__sbti-code { font-size: 14px; font-weight: 700; margin-bottom: 6px; }
 .pv__pattern-label { font-size: 11px; color: #8e8e93; margin-bottom: 3px; }
 .pv__pattern-str {
   font-family: 'SF Mono', 'Menlo', monospace;
@@ -661,7 +710,7 @@ const patternComparison = computed(() => {
   border-radius: 6px; word-break: break-all;
 }
 
-/* Pattern 逐位对比 */
+/* Pattern 逐维对比 */
 .pv__pattern-grid { font-size: 12px; }
 .pv__pg-row {
   display: grid; grid-template-columns: 90px 36px 36px 36px;
@@ -675,14 +724,16 @@ const patternComparison = computed(() => {
 .pv__pg-level { font-weight: 700; font-size: 13px; }
 
 /* 等级分布 */
-.pv__level-grid { display: flex; flex-wrap: wrap; gap: 4px; }
+.pv__level-grid { display: flex; flex-wrap: wrap; gap: 6px; }
 .pv__lg-item { display: flex; flex-direction: column; align-items: center; gap: 2px; }
 .pv__lg-dim { font-size: 10px; color: #8e8e93; }
 .pv__lg-badge {
-  width: 24px; height: 20px; border-radius: 4px;
-  color: #fff; font-size: 11px; font-weight: 700;
+  width: 24px; height: 18px; border-radius: 3px;
+  color: #fff; font-size: 10px; font-weight: 700;
   display: flex; align-items: center; justify-content: center;
 }
+.pv__lg-legend { font-size: 10px; color: #8e8e93; margin-top: 6px; display: flex; align-items: center; gap: 4px; }
+.pv__lg-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
 
 /* ── 题目对比 Tab ── */
 .pv__questions { padding: 12px; display: flex; flex-direction: column; gap: 12px; }
@@ -712,33 +763,11 @@ const patternComparison = computed(() => {
 .pv__q-tag {
   font-size: 9px; font-weight: 700;
   padding: 1px 4px; border-radius: 3px;
-  flex-shrink: 0; height: fit-content; margin-top: 1px;
+  flex-shrink: 0; margin-top: 1px;
 }
 .pv__q--sbti .pv__q-tag { background: #007AFF; color: #fff; }
 .pv__q--dhti .pv__q-tag { background: #34C759; color: #fff; }
 .pv__q-body { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 4px; flex: 1; }
-
-/* ── 内联编辑元素 ── */
-.ef-input {
-  border: 1px solid #007AFF; border-radius: 5px;
-  padding: 2px 6px; font-size: 12px; outline: none;
-  background: #fff; color: #1c1c1e;
-  font-family: -apple-system, 'PingFang SC', sans-serif;
-  min-width: 120px; flex: 1;
-}
-.ef-textarea { width: 100%; resize: vertical; min-height: 44px; line-height: 1.6; }
-.ef-btn {
-  font-size: 10px; padding: 1px 4px;
-  border-radius: 4px; border: 1px solid #d1d1d6;
-  background: #fff; cursor: pointer; flex-shrink: 0;
-}
-.ef-edit { color: #007AFF; border-color: rgba(0,122,255,0.4); }
-.ef-edit:hover { background: #EFF6FF; }
-.ef-revert { color: #FF9500; border-color: rgba(255,149,0,0.4); }
-.ef-revert:hover { background: #FFF9EB; }
-.ef-ok { font-size: 10px; color: #34C759; font-weight: 700; }
-.ef-err { font-size: 10px; color: #FF3B30; font-weight: 700; cursor: help; }
-.ef-hint { font-size: 10px; color: #8e8e93; }
 
 /* ── 右列：结果预览 ── */
 .pv__col-title {
@@ -746,37 +775,39 @@ const patternComparison = computed(() => {
   text-transform: uppercase; letter-spacing: 0.08em;
   color: #8e8e93; margin-bottom: 12px;
 }
-.pv__rage-banner {
-  background: #FF3B30; color: #fff; padding: 8px 12px;
-  border-radius: 8px; font-weight: 600; font-size: 13px; margin-bottom: 12px;
-}
-.pv__fallback-banner {
-  background: #8e8e93; color: #fff; padding: 8px 12px;
-  border-radius: 8px; font-weight: 600; font-size: 13px; margin-bottom: 12px;
-}
+.pv__edit-hint { text-transform: none; letter-spacing: 0; font-weight: 400; }
+
+.pv__rage-banner { background: #FF3B30; color: #fff; padding: 8px 12px; border-radius: 8px; font-weight: 600; font-size: 13px; margin-bottom: 12px; }
+.pv__fallback-banner { background: #8e8e93; color: #fff; padding: 8px 12px; border-radius: 8px; font-weight: 600; font-size: 13px; margin-bottom: 12px; }
+
 .pv__result-hero {
   background: #1c1c1e; border-radius: 12px;
   padding: 24px; text-align: center; margin-bottom: 12px;
 }
-.pv__avatar {
-  width: 100px; height: 100px; border-radius: 50%;
-  object-fit: cover; background: #2c2c2e; margin-bottom: 12px;
-}
+.pv__avatar { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; background: #2c2c2e; margin-bottom: 12px; }
 .pv__result-sim { color: #007AFF; font-weight: 700; font-size: 14px; margin-bottom: 4px; }
 .pv__result-code { color: #fff; font-size: 36px; font-weight: 700; letter-spacing: 2px; margin-bottom: 4px; }
-.pv__result-cn { color: #fff; font-size: 18px; margin-bottom: 6px; }
-.pv__result-intro { color: rgba(255,255,255,0.6); font-size: 13px; margin-bottom: 10px; }
+.pv__result-cn { color: #fff; font-size: 18px; }
+.pv__result-intro { color: rgba(255,255,255,0.6); font-size: 13px; }
+
+.pv__ef-row {
+  display: flex; align-items: center; gap: 4px; flex-wrap: wrap; margin-top: 4px;
+}
+.pv__ef-center { justify-content: center; }
+
 .pv__tags { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
 .pv__tag {
   border: 1px solid rgba(255,255,255,0.3);
   color: rgba(255,255,255,0.7);
   padding: 2px 8px; border-radius: 12px; font-size: 11px;
 }
+
 .pv__secondary {
   background: #fff; border: 1px solid #e5e5ea;
   border-radius: 10px; padding: 10px 14px;
   font-size: 13px; color: #3c3c43; margin-bottom: 12px;
 }
+
 .pv__section {
   background: #fff; border-radius: 10px;
   padding: 14px; margin-bottom: 8px; border: 1px solid #e5e5ea;
@@ -786,10 +817,53 @@ const patternComparison = computed(() => {
   text-transform: uppercase; letter-spacing: 0.08em;
   color: #8e8e93; margin-bottom: 10px;
 }
+.pv__section-label-row {
+  display: flex; align-items: center; gap: 6px; margin-bottom: 8px;
+}
+.pv__section-label-row .pv__section-label { margin-bottom: 0; }
 .pv__desc { font-size: 13px; line-height: 1.8; color: #1c1c1e; }
+
 .pv__toggle {
   width: 100%; background: none; border: none;
   cursor: pointer; display: flex; justify-content: space-between; align-items: center; padding: 0;
 }
 .pv__footnote { font-size: 11px; color: #8e8e93; text-align: center; margin-top: 12px; }
+
+/* ── 内联编辑元素 ── */
+.ef-input {
+  border: 1px solid #007AFF; border-radius: 5px;
+  padding: 2px 6px; font-size: 13px; outline: none;
+  background: #fff; color: #1c1c1e;
+  font-family: -apple-system, 'PingFang SC', sans-serif;
+  min-width: 100px;
+}
+.ef-light {
+  background: rgba(255,255,255,0.15);
+  border-color: rgba(255,255,255,0.5);
+  color: #fff;
+}
+.ef-wide { min-width: 200px; }
+.ef-textarea { width: 100%; resize: vertical; min-height: 44px; line-height: 1.6; font-size: 12px; }
+.ef-desc { min-height: 100px; }
+.ef-btn {
+  font-size: 10px; padding: 1px 5px;
+  border-radius: 4px; border: 1px solid #d1d1d6;
+  background: #fff; cursor: pointer; flex-shrink: 0;
+  transition: background 0.1s;
+}
+.ef-edit { color: #007AFF; border-color: rgba(0,122,255,0.4); }
+.ef-edit:hover { background: #EFF6FF; }
+.ef-revert { color: #FF9500; border-color: rgba(255,149,0,0.4); }
+.ef-revert:hover { background: #FFF9EB; }
+.ef-light-btn {
+  background: rgba(255,255,255,0.15);
+  border-color: rgba(255,255,255,0.3);
+  color: rgba(255,255,255,0.8);
+}
+.ef-light-btn:hover { background: rgba(255,255,255,0.3); }
+.ef-ok { font-size: 10px; color: #34C759; font-weight: 700; }
+.ef-light-hint.ef-ok { color: #4ade80; }
+.ef-err { font-size: 10px; color: #FF3B30; font-weight: 700; cursor: help; }
+.ef-hint { font-size: 10px; color: #8e8e93; }
+.ef-light-hint { color: rgba(255,255,255,0.5) !important; }
 </style>
