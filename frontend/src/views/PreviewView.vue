@@ -6,7 +6,7 @@
  * SBTI：只读参考基准
  * DHTI：可内联编辑，改动写回 types.json + questions.json（前后端两份同步）
  */
-import { ref, computed, reactive } from 'vue'
+import { ref, computed, reactive, onMounted } from 'vue'
 import typesDataRaw from '@/data/types.json'
 import questionsDataRaw from '@/data/questions.json'
 import dimensionsData from '@/data/dimensions.json'
@@ -24,12 +24,7 @@ const dhtiStandard = ref(JSON.parse(JSON.stringify(typesDataRaw.standard)))
 const dhtiSpecial  = ref(JSON.parse(JSON.stringify(typesDataRaw.special)))
 const dhtiQuestions = ref(JSON.parse(JSON.stringify(questionsDataRaw.main)))
 
-// session 快照（进入时保存，用于"还原全部"）
-const sessionSnapshot = {
-  types: JSON.parse(JSON.stringify(typesDataRaw)),
-  questions: JSON.parse(JSON.stringify(questionsDataRaw)),
-}
-
+// session 快照已废弃，还原改为 git HEAD，见 restoreAll()
 const allTypes = computed(() => [...dhtiStandard.value, ...dhtiSpecial.value])
 const dhtiTypesMap = computed(() => {
   const m = {}
@@ -220,7 +215,7 @@ async function revertField(file, id, field) {
   editMeta[k].prevValue = undefined
 }
 
-// 全局还原
+// 全局还原：恢复到最后一次 git commit 的版本
 const restoring = ref(false)
 const restoreMsg = ref('')
 async function restoreAll() {
@@ -230,16 +225,17 @@ async function restoreAll() {
     const res = await fetch('http://localhost:3001/api/dev/restore', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(sessionSnapshot),
+      body: JSON.stringify({ source: 'git' }),
     })
     const json = await res.json()
     if (!res.ok) throw new Error(json.error)
-    dhtiStandard.value = JSON.parse(JSON.stringify(sessionSnapshot.types.standard))
-    dhtiSpecial.value = JSON.parse(JSON.stringify(sessionSnapshot.types.special))
-    dhtiQuestions.value = JSON.parse(JSON.stringify(sessionSnapshot.questions.main))
+    // 用 git HEAD 版本刷新本地响应式数据
+    dhtiStandard.value = JSON.parse(JSON.stringify(json.types.standard))
+    dhtiSpecial.value = JSON.parse(JSON.stringify(json.types.special))
+    dhtiQuestions.value = JSON.parse(JSON.stringify(json.questions.main))
     Object.keys(editMeta).forEach(k => delete editMeta[k])
     editingKey.value = null
-    restoreMsg.value = '✓ 已还原至初始状态'
+    restoreMsg.value = '✓ 已还原至上次 commit 版本'
   } catch (e) {
     restoreMsg.value = '✗ 还原失败：' + e.message
   } finally {
@@ -338,7 +334,7 @@ const sbtiQuestionsByModel = computed(() => {
       <div class="pv__header-actions">
         <span v-if="restoreMsg" class="pv__restore-msg" :class="{ 'is-error': restoreMsg.startsWith('✗') }">{{ restoreMsg }}</span>
         <button class="pv__restore-btn" :disabled="restoring" @click="restoreAll">
-          {{ restoring ? '还原中…' : '↺ 还原全部 DHTI' }}
+          {{ restoring ? '还原中…' : '↺ 还原至上次 commit' }}
         </button>
       </div>
     </div>

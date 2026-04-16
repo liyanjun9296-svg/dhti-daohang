@@ -6,6 +6,7 @@
 const express = require('express')
 const fs = require('fs')
 const path = require('path')
+const { execSync } = require('child_process')
 
 const router = express.Router()
 
@@ -29,9 +30,15 @@ function writeJson(filename, data) {
   }
 }
 
+/** 读取 git HEAD 中某文件的内容 */
+function readGitHead(relPath) {
+  const out = execSync(`git show HEAD:${relPath}`, { cwd: ROOT }).toString('utf-8')
+  return JSON.parse(out)
+}
+
 /**
  * GET /api/dev/dhti
- * 返回当前 types.json + questions.json 快照（供 session 快照使用）
+ * 返回当前文件内容 + git HEAD 原始版本（供 session 对比）
  */
 router.get('/dhti', (req, res) => {
   try {
@@ -41,6 +48,21 @@ router.get('/dhti', (req, res) => {
     })
   } catch (e) {
     res.status(500).json({ error: e.message })
+  }
+})
+
+/**
+ * GET /api/dev/dhti-original
+ * 返回 git HEAD 中的 types.json + questions.json（最后一次 commit 的版本）
+ */
+router.get('/dhti-original', (req, res) => {
+  try {
+    res.json({
+      types: readGitHead('frontend/src/data/types.json'),
+      questions: readGitHead('frontend/src/data/questions.json'),
+    })
+  } catch (e) {
+    res.status(500).json({ error: '读取 git HEAD 失败：' + e.message })
   }
 })
 
@@ -74,20 +96,14 @@ router.post('/patch', (req, res) => {
     const data = readJson(filename)
 
     if (file === 'types') {
-      const item = [...(data.standard || []), ...(data.special || [])].find(t => t.code === id)
-      if (!item) return res.status(404).json({ error: `type "${id}" not found` })
-      // 找在 standard 还是 special 里
       const arrKey = data.standard?.find(t => t.code === id) ? 'standard' : 'special'
-      const idx = data[arrKey].findIndex(t => t.code === id)
+      const idx = data[arrKey]?.findIndex(t => t.code === id) ?? -1
+      if (idx === -1) return res.status(404).json({ error: `type "${id}" not found` })
       data[arrKey][idx][field] = value
     } else {
-      const item = data.main?.find(q => q.id === id) || data.find?.(q => q.id === id)
-      if (!item) return res.status(404).json({ error: `question "${id}" not found` })
-      if (data.main) {
-        data.main.find(q => q.id === id)[field] = value
-      } else {
-        data.find(q => q.id === id)[field] = value
-      }
+      const idx = data.main?.findIndex(q => q.id === id) ?? -1
+      if (idx === -1) return res.status(404).json({ error: `question "${id}" not found` })
+      data.main[idx][field] = value
     }
 
     writeJson(filename, data)
@@ -99,19 +115,31 @@ router.post('/patch', (req, res) => {
 
 /**
  * POST /api/dev/restore
- * 把 types.json 和 questions.json 恢复为传入的快照
+ * 恢复 types.json + questions.json 到指定版本
  *
- * Body: { types: {...}, questions: {...} }
+ * Body:
+ *   source  'git'（恢复到最后一次 commit）| 'snapshot'（使用传入快照）
+ *   types    仅 source='snapshot' 时需要
+ *   questions 仅 source='snapshot' 时需要
  */
 router.post('/restore', (req, res) => {
   try {
-    const { types, questions } = req.body
-    if (!types || !questions) {
-      return res.status(400).json({ error: 'Body must have { types, questions }' })
+    const { source } = req.body
+    if (source === 'git') {
+      const types = readGitHead('frontend/src/data/types.json')
+      const questions = readGitHead('frontend/src/data/questions.json')
+      writeJson('types.json', types)
+      writeJson('questions.json', questions)
+      res.json({ ok: true, source: 'git', types, questions })
+    } else {
+      const { types, questions } = req.body
+      if (!types || !questions) {
+        return res.status(400).json({ error: 'Body must have { types, questions } when source != git' })
+      }
+      writeJson('types.json', types)
+      writeJson('questions.json', questions)
+      res.json({ ok: true, source: 'snapshot' })
     }
-    writeJson('types.json', types)
-    writeJson('questions.json', questions)
-    res.json({ ok: true })
   } catch (e) {
     res.status(500).json({ error: e.message })
   }
