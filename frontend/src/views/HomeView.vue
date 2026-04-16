@@ -121,9 +121,9 @@ async function startQuiz() {
 
 /* 百度地图 Logo */
 .home__logo {
-  width: 120px;
-  height: 120px;
-  border-radius: 29px;
+  width: 78px;
+  height: 78px;
+  border-radius: 19px;
   display: block;
 }
 
