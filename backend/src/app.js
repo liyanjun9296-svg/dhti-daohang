@@ -1,8 +1,3 @@
-/**
- * 后端入口
- * Express 轻量 API 服务
- * 端口：3001（前端 Vite 默认 5173，避免冲突）
- */
 const express = require('express')
 const cors = require('cors')
 const quizRouter = require('./routes/quiz')
@@ -19,6 +14,13 @@ app.use(express.json())
 
 // ── 路由 ────────────────────────────────────────────────
 app.use('/api', quizRouter)
+
+// 仅本地开发：SBTI 数据编辑端点
+if (process.env.NODE_ENV !== 'production') {
+  const devRouter = require('./routes/dev')
+  app.use('/api/dev', devRouter)
+  console.log('[DHTI] Dev 端点已启用：/api/dev/*')
+}
 
 // 健康检查
 app.get('/health', (req, res) => res.json({ status: 'ok' }))
