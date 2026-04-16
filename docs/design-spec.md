@@ -101,7 +101,7 @@
 |------|------|------|------|
 | 百度地图 Logo | `public/baidu-logo.png` | 78×78 | 首页图标，圆角 19px |
 | 结果页占位图 | `public/types/placeholder.png` | 200×200 | 角色图 fallback |
-| 人格角色图 | `public/types/{CODE}.png` | 200×200 | 22 种已完成 |
+| 人格角色图 | `public/types/{CODE}.png` | 200×200 | 22 种已完成，5 种待生成（SHOW/MATE/JOKE/NOOB/NUMB） |
 
 **角色图命名规则**：使用大写人格代码，如 `NAVI.png`、`RAGE.png`、`HHHH.png`
 

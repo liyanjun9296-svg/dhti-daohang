@@ -35,7 +35,7 @@ alwaysApply: true
 |------|------|------|
 | 百度地图 Logo | `frontend/public/baidu-logo.png` | 首页图标，78×78，r=19 |
 | 结果页占位图 | `frontend/public/types/placeholder.png` | 角色图加载失败时显示，200×200 |
-| 角色配图（已完成） | `frontend/public/types/{CODE}.png` | 22 种人格各一张，200×200 |
+| 角色配图（已完成） | `frontend/public/types/{CODE}.png` | 22 种已完成，5 种待生成，200×200 |
 
 ## 三层人格体系：MBTI ⊃ SBTI ⊃ DHTI
 
@@ -102,6 +102,11 @@ DHTI（22种）→ 本项目，驾驶行为框架，15维，NCRAS模型
 | RELAY 拼车组织者 | ATM-er 送钱者 | ENFJ 🟢绿 |
 | LOST 导航依赖症 | OH-NO 哦不人 | ISFJ 🔵青 |
 | FLEX 随机应变王 | FAKE 伪人 | ENTP 🟣紫 |
+| SHOW 炫车族 | SEXY 尤物 | ESTP 🟡黄 |
+| MATE 副驾伴侣 | LOVE-R 多情者 | ESFJ 🔵青 |
+| JOKE 段子司机 | JOKE-R 小丑 | ENTP 🟣紫 |
+| NOOB 萌新路手 | OH-NO 哦不人 | ISFJ 🔵青 |
+| NUMB 行尸走路 | DEAD 死者 | INTP 🟣紫 |
 | RAGE 路怒者 | FUCK 草者 | 特殊（无MBTI对应） |
 | HHHH 随缘兜底侠 | HHHH 傻乐者 | 特殊（无MBTI对应） |
 
@@ -125,11 +130,11 @@ sbti_daohang/
 │       ├── api/quiz.js         # 前端 HTTP 调用封装（含离线降级逻辑）
 │       ├── engine/scoring.js   # 与后端同步的评分引擎副本
 │       ├── assets/             # 静态资源
-│       ├── public/types/       # 22张角色配图已完成（NAVI.png ~ HHHH.png）
+│       ├── public/types/       # 22张角色配图已完成（NAVI.png ~ HHHH.png），5张待补充（SHOW/MATE/JOKE/NOOB/NUMB）
 │       └── data/               # 与后端同步的数据副本（修改需两处同步）
 └── docs/
     ├── algorithm.md            # 算法文档（SBTI原理/MBTI-SBTI-DHTI三层体系/评分算法/类型全表）
-    ├── character-prompts.md    # 22种人格 AI 生图提示词（含每种类型的MBTI/SBTI对应注释）
+    ├── character-prompts.md    # 27种人格 AI 生图提示词（含每种类型的MBTI/SBTI对应注释）
     ├── design-spec.md          # 设计规范（颜色/布局/字体/组件/图片资源）
     └── ios.md                  # Apple 设计风格参考文档
 ```
@@ -221,7 +226,7 @@ rage_gate_q1 改选其他项
 **评分规则**
 - 等级枚举：`L`（原始分 2-3）/ `M`（4）/ `H`（5-6），数值映射 L=1 M=2 H=3
 - 评分函数链：`calcDimensionScores → scoresToLevels → determineResult`
-- 人格类型：20 种标准类型 + 2 种特殊（路怒者 / 随缘兜底侠）= 22 种
+- 人格类型：25 种标准类型 + 2 种特殊（路怒者 / 随缘兜底侠）= 27 种
 - `maxDistance=30`；低于 `fallbackThreshold=60%` 相似度时返回兜底类型
 
 ## 响应式布局
@@ -247,9 +252,9 @@ rage_gate_q1 改选其他项
 - Logo 尺寸还原：120×120 r=29 → 78×78 r=19（同步 Pencil 设计稿，commit 0c73684）
 - Avatar 图片尺寸：302×302（溢出裁切）→ 200×200（精确填满圆形容器）
 
-## 配图规划（已完成）
+## 配图规划
 
-22 种人格角色插图已生成并部署（commit `15b33f4`）：
+22 种人格角色插图已生成并部署（commit `15b33f4`），5 种新增类型（SHOW/MATE/JOKE/NOOB/NUMB）待生成：
 - 存放路径：`frontend/public/types/{CODE}.png`（如 `NAVI.png`、`RAGE.png`）
 - 尺寸：200×200px，扁平卡通风格，纯黑背景
 - 版权说明：不可直接使用 MBTI / SBTI 的角色插图（版权保护资产）
@@ -265,7 +270,7 @@ rage_gate_q1 改选其他项
 |------|---------|----------------------------------|
 | `docs/algorithm.md` | 评分引擎、NCRAS维度、三层体系 | 修改 `scoring.js` / `types.json` / `dimensions.json` / `questions.json` |
 | `docs/design-spec.md` | 颜色/尺寸/布局/组件规范 | 修改 `HomeView` / `QuizView` / `ResultView` / `App.vue` 样式 |
-| `docs/character-prompts.md` | 22种人格配图提示词 | 新增/修改人格类型、重新生成配图 |
+| `docs/character-prompts.md` | 27种人格配图提示词 | 新增/修改人格类型、重新生成配图 |
 | `docs/ios.md` | Apple 设计原则参考 | 新增页面、重构 UI 风格 |
 
 ---
